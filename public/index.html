@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Build Version: v1.3.7 -->
+<!-- Build Version: v1.4.4 -->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Word Wonder v1.3.7</title>
+  <title>Word Wonder v1.4.4</title>
   
   <!-- Standard Browser Favicon -->
-  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232e1065'/><text x='50' y='72' font-size='70' font-weight='900' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif'>W</text></svg>">
 
   <!-- Apple Touch Icon (Used when adding to iOS Home Screen) -->
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232e1065'/><text x='50' y='72' font-size='70' font-weight='900' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif'>W</text></svg>">
 
   <!-- Enable Full-Screen Web App Mode on iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,8 +19,8 @@
 
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
+      --bg: #082f49;
+      --card-bg: #0c4a6e;
       --accent: #38bdf8;
       --accent-hover: #0ea5e9;
       --text: #f8fafc;
@@ -28,7 +28,7 @@
       --danger: #ef4444;
       --success: #22c55e;
       --warning: #facc15;
-      --die-bg: #334155;
+      --die-bg: #0369a1;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 16px; transition: background-color 0.3s; position: relative; }
@@ -53,12 +53,12 @@
       max-width: 420px;
       padding: 12px 0;
       margin: 0 auto 12px auto;
-      border-bottom: 1px solid #1e293b;
+      border-bottom: 1px solid #0c4a6e;
       transition: background-color 0.3s;
     }
     .app-header { display: flex; justify-content: space-between; align-items: center; }
-    h1 { font-size: 1.3rem; color: var(--accent); }
-    .version-tag { font-size: 0.75rem; color: var(--text-muted); font-weight: bold; background: #1e293b; padding: 2px 6px; border-radius: 4px; border: 1px solid #334155; }
+    h1 { font-size: 1.3rem; color: var(--accent); display: flex; align-items: center; gap: 2px; }
+    .version-tag { font-size: 0.75rem; color: var(--text-muted); font-weight: bold; background: #0c4a6e; padding: 2px 6px; border-radius: 4px; border: 1px solid #0369a1; }
     .timer-display { font-size: 1.1rem; font-weight: bold; color: var(--accent); transition: color 0.3s; }
     .timer-yellow { color: var(--warning) !important; }
     .timer-red { color: var(--danger) !important; animation: pulse 1s infinite; }
@@ -66,9 +66,9 @@
 
     .container { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
     .card { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 12px; transition: background-color 0.3s; }
-    input, button, select { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: var(--text); font-size: 1rem; outline: none; }
+    input, button, select { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #0369a1; background: #082f49; color: var(--text); font-size: 1rem; outline: none; }
     input:focus, select:focus { border-color: var(--accent); }
-    button { background: var(--accent); color: #0f172a; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s; }
+    button { background: var(--accent); color: #082f49; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s; }
     button:active { background: var(--accent-hover); }
     .hidden { display: none !important; }
     
@@ -77,18 +77,17 @@
     .boggle-grid.grid-5 { grid-template-columns: repeat(5, 1fr); }
     .boggle-grid.grid-6 { grid-template-columns: repeat(6, 1fr); }
 
-    .die { aspect-ratio: 1; background: var(--die-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: var(--text); cursor: pointer; user-select: none; transition: background 0.1s, transform 0.1s; }
-    .boggle-grid.grid-5 .die { font-size: 1.25rem; }
-    .boggle-grid.grid-6 .die { font-size: 1.1rem; }
-    .die.selected { background: var(--accent); color: #0f172a; transform: scale(0.95); box-shadow: 0 0 10px var(--accent); }
+    .die { aspect-ratio: 1; background: var(--die-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 3.28rem; font-weight: 900; color: var(--text); cursor: pointer; user-select: none; transition: background 0.1s, transform 0.1s; }
+    .boggle-grid.grid-5 .die { font-size: 2.73rem; }
+    .boggle-grid.grid-6 .die { font-size: 2.46rem; }
+    .die.selected { background: var(--accent); color: #082f49; transform: scale(0.95); box-shadow: 0 0 10px var(--accent); }
     
     .word-input-container { display: flex; gap: 8px; }
     
-    /* Guesses Table Style */
-    .word-table-container { max-height: 160px; overflow-y: auto; background: #0f172a; border-radius: 8px; padding: 4px; }
+    .word-table-container { max-height: 160px; overflow-y: auto; background: #082f49; border-radius: 8px; padding: 4px; }
     .guesses-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: left; }
-    .guesses-table th { color: var(--text-muted); font-size: 0.75rem; padding: 6px; border-bottom: 1px solid #334155; }
-    .guesses-table td { padding: 6px; border-bottom: 1px solid #1e293b; }
+    .guesses-table th { color: var(--text-muted); font-size: 0.75rem; padding: 6px; border-bottom: 1px solid #0369a1; }
+    .guesses-table td { padding: 6px; border-bottom: 1px solid #0c4a6e; }
     .delete-x { color: var(--danger); font-weight: bold; cursor: pointer; text-align: center; font-size: 1rem; }
     .delete-x:hover { color: #f87171; }
 
@@ -96,7 +95,7 @@
     .checkbox-container input { width: auto; cursor: pointer; }
 
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; gap: 12px; font-weight: bold; color: var(--accent); }
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(8,47,73,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; gap: 12px; font-weight: bold; color: var(--accent); }
   </style>
 </head>
 <body>
@@ -108,18 +107,19 @@
   <!-- Sticky Header -->
   <div class="sticky-header" id="sticky-header">
     <div class="app-header">
-      <h1>WORD WONDER</h1>
+      <h1>
+        <svg style="width: 3.3rem; height: 3.3rem; vertical-align: middle; display: inline-block;" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%232e1065"/><text x="50" y="72" font-size="70" font-weight="900" text-anchor="middle" fill="%2338bdf8" font-family="sans-serif">W</text></svg>ORD 
+        <svg style="width: 3.3rem; height: 3.3rem; vertical-align: middle; display: inline-block;" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%232e1065"/><text x="50" y="72" font-size="70" font-weight="900" text-anchor="middle" fill="%2338bdf8" font-family="sans-serif">W</text></svg>ONDER
+      </h1>
       <div id="header-timer" class="timer-display hidden">03:00</div>
-      <span class="version-tag" id="app-version">v1.3.7</span>
+      <span class="version-tag" id="app-version">v1.4.4</span>
     </div>
   </div>
 
   <div class="container">
     <!-- LOBBY SCREEN -->
     <div id="screen-lobby" class="card">
-      <div style="text-align: center; margin-bottom: 4px;">
-        <img src="/apple-touch-icon.png" alt="Word Wonder Logo" style="width: 64px; height: 64px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-      </div>
+      <div style="font-size: 0.75rem; color: var(--accent); font-weight: bold; margin-bottom: -4px;">CURRENT VERSION: v1.4.4</div>
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <label style="font-size: 0.8rem; color: var(--text-muted);">First Name:</label>
         <input type="text" id="input-name" placeholder="First Name" maxlength="12" value="Alex" />
@@ -143,21 +143,35 @@
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <label style="font-size: 0.8rem; color: var(--text-muted);">Board Theme / Color:</label>
         <select id="select-theme">
-          <option value="slate">Slate Dark (Default)</option>
-          <option value="ocean">Ocean Blue</option>
+          <option value="slate">Slate Dark</option>
+          <option value="ocean" selected>Ocean Blue (Default)</option>
           <option value="forest">Forest Green</option>
           <option value="purple">Midnight Purple</option>
         </select>
       </div>
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <label style="font-size: 0.8rem; color: var(--text-muted);">Multiplayer Host PIN (Access Code):</label>
-        <input type="password" id="input-host-pin" placeholder="Enter PIN for Host Lobby (e.g. 8888)" maxlength="4" />
+        <input type="password" id="input-host-pin" placeholder="Enter Host PIN..." maxlength="4" />
       </div>
       <label class="checkbox-container">
         <input type="checkbox" id="chk-non-touching" />
         Allow Non-Touching Words
       </label>
       <button id="btn-start-game">Start Game</button>
+    </div>
+
+    <!-- MULTIPLAYER LOBBY WAITING SCREEN -->
+    <div id="screen-multi-lobby" class="card hidden">
+      <h2 style="text-align: center; color: var(--accent); font-size: 1.2rem;">Multiplayer Room Lobby</h2>
+      <p style="text-align: center; font-size: 0.85rem; color: var(--text-muted);">Waiting for players to join the host session...</p>
+      <div style="background: #082f49; padding: 12px; border-radius: 8px; border: 1px solid #0369a1;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">Connected Players:</div>
+        <ul id="multi-player-list" style="list-style-type: none; display: flex; flex-direction: column; gap: 4px; font-weight: bold;">
+          <li>Alex (Host)</li>
+        </ul>
+      </div>
+      <button id="btn-start-multi-game">Launch Multiplayer Game</button>
+      <button id="btn-back-lobby" style="background: #0369a1; color: var(--text);">Back to Main Menu</button>
     </div>
 
     <!-- GAMEPLAY SCREEN -->
@@ -184,7 +198,7 @@
           </table>
         </div>
       </div>
-      <button id="btn-end-early" style="background: #334155; color: var(--text-muted); font-size: 0.85rem; padding: 8px; margin-top: 4px;">End Game Early</button>
+      <button id="btn-end-early" style="background: #0369a1; color: var(--text-muted); font-size: 0.85rem; padding: 8px; margin-top: 4px;">End Game Early</button>
     </div>
 
     <!-- RESULTS SCREEN -->
@@ -202,8 +216,8 @@
       <h3 style="font-size: 1.1rem; text-align: center;">Delete Word?</h3>
       <p id="modal-word-display" style="text-align: center; font-size: 1.25rem; font-weight: bold; color: var(--accent); margin: 6px 0;"></p>
       <div style="display: flex; gap: 8px; margin-top: 8px;">
-        <button id="btn-modal-cancel" style="background: #334155; color: var(--text);">Cancel</button>
-        <button id="btn-modal-confirm" style="background: #334155; color: white;">Delete</button>
+        <button id="btn-modal-cancel" style="background: #0369a1; color: var(--text);">Cancel</button>
+        <button id="btn-modal-confirm" style="background: #0369a1; color: white;">Delete</button>
       </div>
     </div>
   </div>
@@ -260,17 +274,18 @@
     let selectedDieIndices = [];
     let mySubmittedWords = []; 
     let wordToDelete = null;
-    let currentTheme = 'slate';
+    let currentTheme = 'ocean';
     let allowNonTouching = false;
 
     const screens = {
       lobby: document.getElementById('screen-lobby'),
+      multiLobby: document.getElementById('screen-multi-lobby'),
       game: document.getElementById('screen-game'),
       results: document.getElementById('screen-results')
     };
 
     function applyTheme(themeName) {
-      const theme = THEMES[themeName] || THEMES.slate;
+      const theme = THEMES[themeName] || THEMES.ocean;
       document.documentElement.style.setProperty('--bg', theme.bg);
       document.documentElement.style.setProperty('--card-bg', theme.cardBg);
       document.documentElement.style.setProperty('--die-bg', theme.dieBg);
@@ -386,11 +401,31 @@
       timeLeft = parseInt(document.getElementById('select-timer-duration').value);
       
       const pinInput = document.getElementById('input-host-pin').value.trim();
-      if (pinInput && pinInput !== '8888') {
-        alert('Invalid Host PIN! Access code must be 8888.');
+      if (pinInput) {
+        if (pinInput !== '8888') {
+          alert('Invalid Host PIN! Access code must be 8888.');
+          return;
+        }
+        showScreen('multiLobby');
         return;
       }
 
+      applyTheme(currentTheme);
+      board = rollBoard(gridRows);
+      mySubmittedWords = [];
+
+      showScreen('game');
+      renderBoard(board, gridRows);
+      renderMyGuessesTable();
+      updateScorePreview();
+      startTimer();
+    };
+
+    document.getElementById('btn-back-lobby').onclick = () => {
+      showScreen('lobby');
+    };
+
+    document.getElementById('btn-start-multi-game').onclick = () => {
       applyTheme(currentTheme);
       board = rollBoard(gridRows);
       mySubmittedWords = [];
@@ -608,7 +643,7 @@
                 }
               });
 
-              html += `<div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;"><strong>${m.partOfSpeech}:</strong>`;
+              html += `<div style="border-bottom: 1px solid #0369a1; padding-bottom: 6px; margin-bottom: 6px;"><strong>${m.partOfSpeech}:</strong>`;
               uniqueDefs.forEach((d, i) => {
                 html += `<div style="margin-top: 2px;">${i+1}. ${d.definition}</div>`;
               });
@@ -638,8 +673,8 @@
 
       wordsObjArray.forEach(item => {
         const tag = document.createElement('span');
-        tag.style.cssText = "display: inline-block; background: #0f172a; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; margin: 2px; cursor: pointer; color: var(--text); font-size: 0.85rem;";
-        tag.innerText = item.word;
+        tag.style.cssText = "display: inline-block; background: #082f49; border: 1px solid #0369a1; padding: 4px 8px; border-radius: 4px; margin: 2px; cursor: pointer; color: var(--text); font-size: 0.85rem;";
+        tag.innerText = `${item.word} (${item.pts})`;
         tag.onclick = () => showDefinition(item.word);
         container.appendChild(tag);
       });
@@ -686,7 +721,7 @@
 
       const container = document.getElementById('results-container');
       container.innerHTML = `
-        <div style="background:#0f172a; padding:12px; border-radius:8px; display:flex; flex-direction:column; gap:12px;">
+        <div style="background:#082f49; padding:12px; border-radius:8px; display:flex; flex-direction:column; gap:12px;">
           <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--accent); font-size:1.05rem;">
             <span>${playerName}</span>
             <span>${score} pts</span>
@@ -703,9 +738,9 @@
             </div>
           </div>
 
-          <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:6px; border-top: 1px solid #334155; padding-top: 8px;">
+          <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:6px; border-top: 1px solid #0369a1; padding-top: 8px;">
             <strong style="color:var(--danger);">Non-Scoring:</strong>
-            <div style="margin-left: 8px; display:flex; flex-direction:column; gap:4px;">
+            <div style="margin-left: 10px; display:flex; flex-direction:column; gap:4px;">
               <span style="color:var(--text-muted);">Touching Words:</span>
               <div id="res-touching-invalid" style="display:flex; flex-wrap:wrap; gap:4px;"></div>
 
