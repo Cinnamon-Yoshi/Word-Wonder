@@ -1,22 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Build Version: v1.3.6 -->
+<!-- Build Version: v1.3.5 -->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Word Wonder v1.3.6</title>
-  
-  <!-- Standard Browser Favicon -->
-  <link rel="icon" type="image/png" href="/favicon.png">
-
-  <!-- Apple Touch Icon (Used when adding to iOS Home Screen) -->
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-
-  <!-- Enable Full-Screen Web App Mode on iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Word Wonder">
-
+  <title>Boggle v1.3.5</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -42,20 +30,8 @@
     #flash-overlay.active { opacity: 1; pointer-events: auto; }
     .flash-message { font-size: 2rem; font-weight: 900; color: white; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
 
-    /* Fully Frozen Sticky Header */
-    .sticky-header {
-      position: -webkit-sticky;
-      position: sticky;
-      top: 0;
-      background: var(--bg);
-      z-index: 1000;
-      width: 100%;
-      max-width: 420px;
-      padding: 12px 0;
-      margin: 0 auto 12px auto;
-      border-bottom: 1px solid #1e293b;
-      transition: background-color 0.3s;
-    }
+    /* Sticky Header */
+    .sticky-header { position: sticky; top: 0; background: var(--bg); z-index: 100; width: 100%; max-width: 420px; padding: 8px 0 12px 0; border-bottom: 1px solid #1e293b; margin-bottom: 12px; transition: background-color 0.3s; }
     .app-header { display: flex; justify-content: space-between; align-items: center; }
     h1 { font-size: 1.3rem; color: var(--accent); }
     .version-tag { font-size: 0.75rem; color: var(--text-muted); font-weight: bold; background: #1e293b; padding: 2px 6px; border-radius: 4px; border: 1px solid #334155; }
@@ -108,18 +84,15 @@
   <!-- Sticky Header -->
   <div class="sticky-header" id="sticky-header">
     <div class="app-header">
-      <h1>WORD WONDER</h1>
+      <h1>BOGGLE</h1>
       <div id="header-timer" class="timer-display hidden">03:00</div>
-      <span class="version-tag" id="app-version">v1.3.6</span>
+      <span class="version-tag" id="app-version">v1.3.5</span>
     </div>
   </div>
 
   <div class="container">
     <!-- LOBBY SCREEN -->
     <div id="screen-lobby" class="card">
-      <div style="text-align: center; margin-bottom: 4px;">
-        <img src="/apple-touch-icon.png" alt="Word Wonder Logo" style="width: 64px; height: 64px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-      </div>
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <label style="font-size: 0.8rem; color: var(--text-muted);">First Name:</label>
         <input type="text" id="input-name" placeholder="First Name" maxlength="12" value="Player" />
@@ -130,14 +103,6 @@
           <option value="4">4 x 4 Standard</option>
           <option value="5">5 x 5 Large</option>
           <option value="6">6 x 6 Jumbo</option>
-        </select>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 4px;">
-        <label style="font-size: 0.8rem; color: var(--text-muted);">Game Duration:</label>
-        <select id="select-timer-duration">
-          <option value="60">1 Minute</option>
-          <option value="120">2 Minutes</option>
-          <option value="180" selected>3 Minutes</option>
         </select>
       </div>
       <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -254,7 +219,7 @@
     let timeLeft = 180;
     let timerInterval = null;
     let selectedDieIndices = [];
-    let mySubmittedWords = []; 
+    let mySubmittedWords = []; // Array of objects: { word, isTouching }
     let wordToDelete = null;
     let currentTheme = 'slate';
     let allowNonTouching = false;
@@ -319,8 +284,7 @@
 
     function updateScorePreview() {
       const val = document.getElementById('input-word').value.trim();
-      const existing = mySubmittedWords.find(item => item.word === val.toUpperCase());
-      const isTouching = existing ? existing.isTouching : isValidWordPath(val, board, gridRows);
+      const isTouching = isValidWordPath(val, board, gridRows);
       const pts = getWordScore(val.length, isTouching);
       document.getElementById('score-preview').innerText = `Score Preview: ${pts} pts (${val.length} letters)${!isTouching ? ' [Non-touching]' : ''}`;
     }
@@ -379,10 +343,10 @@
       gridRows = parseInt(document.getElementById('select-grid-size').value);
       currentTheme = document.getElementById('select-theme').value;
       allowNonTouching = document.getElementById('chk-non-touching').checked;
-      timeLeft = parseInt(document.getElementById('select-timer-duration').value);
       applyTheme(currentTheme);
       
       board = rollBoard(gridRows);
+      timeLeft = 180;
       mySubmittedWords = [];
 
       showScreen('game');
@@ -460,8 +424,11 @@
       });
     }
 
+    document.getElementById('btn-submit').onclick = () => submitWord(false);
     const inputWordEl = document.getElementById('input-word');
-    inputWordEl.oninput = () => { updateScorePreview(); };
+    inputWordEl.oninput = () => {
+      updateScorePreview();
+    };
     inputWordEl.onkeydown = (e) => { 
       if (e.key === 'Enter') {
         const typedWord = inputWordEl.value.trim().toUpperCase();
@@ -473,7 +440,9 @@
     function triggerDuplicateFlash() {
       const overlay = document.getElementById('flash-overlay');
       overlay.classList.add('active');
-      setTimeout(() => { overlay.classList.remove('active'); }, 500);
+      setTimeout(() => {
+        overlay.classList.remove('active');
+      }, 500);
     }
 
     function submitWord(isFromTileTap) {
@@ -489,7 +458,8 @@
       if (existingIndex !== -1) {
         const existing = mySubmittedWords[existingIndex];
         if (!existing.isTouching && finalTouching) {
-          existing.isTouching = true; // Upgrade path
+          // Upgrade to touching!
+          existing.isTouching = true;
           mySubmittedWords.splice(existingIndex, 1);
           mySubmittedWords.unshift(existing);
           renderMyGuessesTable();
@@ -499,6 +469,7 @@
           selectedDieIndices = [];
           return;
         } else {
+          // Duplicate warning flash (do not downgrade if already touching, or if entering non-touching again)
           triggerDuplicateFlash();
           input.value = '';
           updateScorePreview();
@@ -518,6 +489,7 @@
     }
 
     document.getElementById('btn-submit').onclick = () => {
+      const word = inputWordEl.value.trim().toUpperCase();
       const isFromTap = selectedDieIndices.length > 0;
       submitWord(isFromTap);
     };
@@ -528,8 +500,11 @@
       
       mySubmittedWords.forEach(item => {
         const tr = document.createElement('tr');
+        
         let pts = getWordScore(item.word.length, item.isTouching);
-        if (!item.isTouching && !allowNonTouching) pts = 0;
+        if (!item.isTouching && !allowNonTouching) {
+          pts = 0;
+        }
 
         const touchSymbol = item.isTouching ? '✓' : '✗';
         const touchColor = item.isTouching ? 'var(--success)' : 'var(--danger)';
@@ -591,16 +566,10 @@
         data.forEach(entry => {
           if (entry.meanings) {
             entry.meanings.forEach(m => {
-              // Ensure unique entries per part of speech, capped at max 2 definitions
-              const uniqueDefs = [];
-              m.definitions.forEach(d => {
-                if (!uniqueDefs.some(existing => existing.definition === d.definition) && uniqueDefs.length < 2) {
-                  uniqueDefs.push(d);
-                }
-              });
-
+              // Limit definitions to max 2 per part of speech
+              const limitedDefs = m.definitions.slice(0, 2);
               html += `<div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 6px;"><strong>${m.partOfSpeech}:</strong>`;
-              uniqueDefs.forEach((d, i) => {
+              limitedDefs.forEach((d, i) => {
                 html += `<div style="margin-top: 2px;">${i+1}. ${d.definition}</div>`;
               });
               html += `</div>`;
@@ -613,9 +582,6 @@
       }
     }
 
-    document.getElementById('def-close-x').onclick = () => {
-      document.getElementById('definition-modal').classList.add('hidden');
-    };
     document.getElementById('btn-def-close').onclick = () => {
       document.getElementById('definition-modal').classList.add('hidden');
     };
@@ -652,6 +618,7 @@
 
       for (const item of mySubmittedWords) {
         loadingWordEl.innerText = `Checking "${item.word}"...`;
+        
         const passesPath = allowNonTouching || item.isTouching;
         
         if (passesPath) {
@@ -659,6 +626,7 @@
           if (isDict) {
             let pts = getWordScore(item.word.length, item.isTouching);
             if (!item.isTouching && !allowNonTouching) pts = 0;
+
             score += pts;
             
             if (item.isTouching) {
