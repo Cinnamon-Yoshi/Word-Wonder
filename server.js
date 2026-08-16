@@ -52,7 +52,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Check for duplicate names in multiplayer lobby
         const nameExists = roomState.players.some(p => p.name.toLowerCase() === playerName.toLowerCase() && p.id !== socket.id);
         if (nameExists) {
             socket.emit('name-taken', 'That name is already taken in the lobby. Please choose another.');
@@ -126,7 +125,7 @@ io.on('connection', (socket) => {
             }
             roomState.gameState = 'countdown';
             roomState.board = rollBoard(parseInt(roomState.settings.gridSize));
-            io.emit('run-countdown');
+            io.emit('run-countdown', roomState.settings);
             
             setTimeout(() => {
                 roomState.gameState = 'playing';
@@ -134,7 +133,7 @@ io.on('connection', (socket) => {
                     board: roomState.board,
                     settings: roomState.settings
                 });
-            }, 4000);
+            }, 5000); // 5 seconds to show settings + 4 countdown words
         }
     });
 
@@ -145,10 +144,15 @@ io.on('connection', (socket) => {
             p.finalScore = data.score;
         }
 
-        const allFinished = roomState.players.every(pl => pl.submittedWords.length > 0 || pl.finalScore !== undefined);
+        // Ensure unique aggregation by player name before checking completion
+        const uniqueMap = new Map();
+        roomState.players.forEach(pl => uniqueMap.set(pl.name, pl));
+        const uniqueList = Array.from(uniqueMap.values());
+
+        const allFinished = uniqueList.every(pl => pl.submittedWords.length > 0 || pl.finalScore !== undefined);
         if (allFinished || socket.id === roomState.hostId) {
             roomState.gameState = 'results';
-            io.emit('show-leaderboard', roomState.players);
+            io.emit('show-leaderboard', uniqueList);
         }
     });
 

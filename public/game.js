@@ -24,6 +24,7 @@ let isSoloGame = false;
 let finalLeaderboardData = [];
 let targetKickId = null;
 let showingWordDetails = false;
+let latestSettings = {};
 
 const screens = {
   landing: document.getElementById('screen-landing'),
@@ -79,7 +80,6 @@ document.getElementById('btn-back-landing').onclick = () => {
   showScreen('landing');
 };
 
-// Leave Lobby / Back to Main Menu button fix
 document.getElementById('btn-leave-lobby').onclick = () => {
   showScreen('landing');
 };
@@ -144,7 +144,6 @@ function rollBoardLocal(rows) {
   return pool.slice(0, rows * rows).map(die => die[Math.floor(Math.random() * die.length)]);
 }
 
-// Host Action Button
 const hostActionBtn = document.getElementById('btn-host-action');
 hostActionBtn.onclick = () => {
   if (isHost) {
@@ -194,10 +193,13 @@ socket.on('host-fail', () => {
   };
 });
 
+socket.on('room-settings-updated', (settings) => {
+  latestSettings = settings;
+});
+
 socket.on('update-room', (state) => {
   const list = document.getElementById('multi-player-list');
   list.innerHTML = '';
-  // Ensure unique list items in lobby view
   const uniqueMap = new Map();
   state.players.forEach(p => uniqueMap.set(p.id, p));
 
@@ -248,14 +250,23 @@ document.getElementById('btn-start-multi-game').onclick = () => {
   }
 };
 
-socket.on('run-countdown', () => {
+socket.on('run-countdown', (settings) => {
+  latestSettings = settings;
   showScreen('countdown');
+  
+  // Display host game info rules above countdown
+  const rulesBox = document.getElementById('countdown-rules-display');
+  const sizeLabel = settings.gridSize === '4' ? '4x4 Standard' : settings.gridSize === '5' ? '5x5 Large' : '6x6 Jumbo';
+  const durLabel = `${parseInt(settings.duration) / 60} Minute(s)`;
+  const ruleLabel = settings.allowNonTouching === 'true' ? 'Allow Non-Touching Words' : 'Adjacent Tiles Only';
+  rulesBox.innerHTML = `<strong>Game Rules:</strong> Grid: ${sizeLabel} | Time: ${durLabel} | Rule: ${ruleLabel}`;
+
   const words = ['THREE', 'TWO', 'ONE', 'GO'];
   let idx = 0;
   const boardEl = document.getElementById('countdown-board');
+  boardEl.innerHTML = '';
   
-  function renderCountdownStep() {
-    boardEl.innerHTML = '';
+  function renderCumulativeStep() {
     if (idx < words.length) {
       const currentWord = words[idx];
       const rowDiv = document.createElement('div');
@@ -263,18 +274,18 @@ socket.on('run-countdown', () => {
       for (let char of currentWord) {
         const tile = document.createElement('div');
         tile.className = 'die';
-        tile.style.width = '55px';
-        tile.style.height = '55px';
-        tile.style.fontSize = '2rem';
+        tile.style.width = '45px';
+        tile.style.height = '45px';
+        tile.style.fontSize = '1.6rem';
         tile.innerText = char;
         rowDiv.appendChild(tile);
       }
       boardEl.appendChild(rowDiv);
       idx++;
-      setTimeout(renderCountdownStep, 1000);
+      setTimeout(renderCumulativeStep, 1000);
     }
   }
-  renderCountdownStep();
+  renderCumulativeStep();
 });
 
 socket.on('start-game-play', (data) => {
@@ -349,7 +360,6 @@ function submitWord(isFromTileTap) {
 
   const trulyTouching = isValidWordPath(word, board, gridRows);
 
-  // If path is invalid and non-touching words are not allowed, flash red and reject
   if (!trulyTouching && !allowNonTouching) {
     triggerNonTouchingFlash();
     input.value = '';
@@ -359,7 +369,6 @@ function submitWord(isFromTileTap) {
     return;
   }
 
-  // If non-touching words ARE allowed, allow typing even if path isn't strictly touching
   const finalTouching = isFromTileTap ? trulyTouching : trulyTouching;
   mySubmittedWords.unshift({ word, isTouching: finalTouching });
   renderMyGuessesTable();
@@ -484,7 +493,6 @@ socket.on('show-leaderboard', (players) => {
   renderLeaderboard(players);
 });
 
-// Dedicated Clean Solo Results Screen
 function renderSoloResults(player) {
   showScreen('results');
   document.getElementById('results-title').innerText = 'Game Results';
@@ -514,7 +522,6 @@ function renderLeaderboard(players) {
   document.getElementById('btn-toggle-word-details').classList.remove('hidden');
   document.getElementById('btn-toggle-word-details').innerText = 'View Detailed Word Breakdown';
 
-  // Deduplicate players by name/id so each unique player is listed only once
   const uniquePlayersMap = new Map();
   players.forEach(p => {
     uniquePlayersMap.set(p.name, p);
@@ -529,17 +536,16 @@ function renderLeaderboardView() {
   const container = document.getElementById('results-container');
   container.innerHTML = '';
 
-  let sorted = [...finalLeaderboardData].sort((a, b) => a.finalScore - b.finalScore);
-  const highestScore = sorted.length > 0 ? sorted[sorted.length - 1].finalScore : 0;
+  // Sort highest score to lowest score (top to bottom)
+  let sorted = [...finalLeaderboardData].sort((a, b) => b.finalScore - a.finalScore);
+  const highestScore = sorted.length > 0 ? sorted[0].finalScore : 0;
 
   sorted.forEach((p, idx) => {
-    setTimeout(() => {
-      const div = document.createElement('div');
-      const isWinner = (p.finalScore > 0 && p.finalScore === highestScore);
-      div.style.cssText = "background:#082f49; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; border: 1px solid #0369a1; animation: fadeIn 0.5s;";
-      div.innerHTML = `<span>${p.name} ${isWinner ? '🏆' : ''}</span><span>${p.finalScore} pts</span>`;
-      container.prepend(div);
-    }, idx * 400);
+    const div = document.createElement('div');
+    const isWinner = (p.finalScore > 0 && p.finalScore === highestScore);
+    div.style.cssText = "background:#082f49; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; border: 1px solid #0369a1;";
+    div.innerHTML = `<span>${p.name} ${isWinner ? '🏆' : ''}</span><span>${p.finalScore} pts</span>`;
+    container.appendChild(div);
   });
 }
 
@@ -589,28 +595,48 @@ async function showDefinition(word) {
   document.getElementById('def-content').innerText = 'Loading definition...';
   document.getElementById('definition-modal').classList.remove('hidden');
 
-  try {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase().trim()}`);
-    if (!res.ok) {
-      document.getElementById('def-content').innerText = 'No definition found.';
-      return;
-    }
-    const data = await res.json();
-    let html = '';
-    data.forEach(entry => {
-      if (entry.meanings) {
-        entry.meanings.forEach(m => {
-          html += `<div style="border-bottom: 1px solid #0369a1; padding-bottom: 4px; margin-bottom: 4px;"><strong>${m.partOfSpeech}:</strong>`;
-          m.definitions.slice(0, 2).forEach((d, i) => {
-            html += `<div style="margin-top:2px;">${i+1}. ${d.definition}</div>`;
+  const cleanWord = word.toLowerCase().trim();
+  const endpoints = [
+    `https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`,
+    `https://dictionary.yabt.com/api/v1/english/${cleanWord}`
+  ];
+
+  let success = false;
+  for (let url of endpoints) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        let html = '';
+        if (Array.isArray(data)) {
+          data.forEach(entry => {
+            if (entry.meanings) {
+              entry.meanings.forEach(m => {
+                html += `<div style="border-bottom: 1px solid #0369a1; padding-bottom: 4px; margin-bottom: 4px;"><strong>${m.partOfSpeech}:</strong>`;
+                m.definitions.slice(0, 2).forEach((d, i) => {
+                  html += `<div style="margin-top:2px;">${i+1}. ${d.definition}</div>`;
+                });
+                html += `</div>`;
+              });
+            }
           });
-          html += `</div>`;
-        });
+        }
+        if (html) {
+          document.getElementById('def-content').innerHTML = html;
+          success = true;
+          break;
+        }
       }
-    });
-    document.getElementById('def-content').innerHTML = html || 'No definition available.';
-  } catch (e) {
-    document.getElementById('def-content').innerText = 'Could not fetch definition.';
+    } catch (e) {
+      // try next endpoint
+    }
+  }
+
+  if (!success) {
+    document.getElementById('def-content').innerHTML = `
+      <div>No definition found.</div>
+      <a href="https://www.google.com/search?q=define+${encodeURIComponent(cleanWord)}" target="_blank" style="color:var(--accent); display:inline-block; margin-top:8px;">Search Google for "${cleanWord}" &rarr;</a>
+    `;
   }
 }
 
