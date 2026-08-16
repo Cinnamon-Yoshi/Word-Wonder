@@ -133,7 +133,7 @@ io.on('connection', (socket) => {
                     board: roomState.board,
                     settings: roomState.settings
                 });
-            }, 5000); // 5 seconds to show settings + 4 countdown words
+            }, 5000);
         }
     });
 
@@ -144,7 +144,6 @@ io.on('connection', (socket) => {
             p.finalScore = data.score;
         }
 
-        // Ensure unique aggregation by player name before checking completion
         const uniqueMap = new Map();
         roomState.players.forEach(pl => uniqueMap.set(pl.name, pl));
         const uniqueList = Array.from(uniqueMap.values());
