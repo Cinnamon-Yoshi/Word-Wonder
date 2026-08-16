@@ -6,7 +6,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Static file middleware serving the 'public' directory
 app.use(express.static('public'));
 
 const ROOMS = ['Study', 'Hall', 'Lounge', 'Library', 'Billiard Room', 'Dining Room', 'Conservatory', 'Ballroom', 'Kitchen'];
@@ -49,14 +48,12 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Confidential Case File Selection
         const solutionRoom = ROOMS[Math.floor(Math.random() * ROOMS.length)];
         const solutionWeapon = WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
         const solutionSuspect = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
         
         gameState.caseFile = { room: solutionRoom, weapon: solutionWeapon, suspect: solutionSuspect };
 
-        // Remaining Deck Combination & Shuffling
         let deckRooms = ROOMS.filter(r => r !== solutionRoom);
         let deckWeapons = WEAPONS.filter(w => w !== solutionWeapon);
         let deckSuspects = CHARACTERS.filter(s => s !== solutionSuspect);
@@ -116,5 +113,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Clue server running on port ${PORT}`);
 });

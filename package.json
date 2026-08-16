@@ -1,7 +1,7 @@
 {
-  "name": "multiplayer-game-hub",
+  "name": "clue-mobile-game",
   "version": "1.0.0",
-  "description": "Multiplayer web-based game suite",
+  "description": "Multiplayer web-based Clue clone",
   "main": "server.js",
   "dependencies": {
     "express": "^4.19.2",
