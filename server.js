@@ -6,9 +6,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Static file middleware serving the 'public' directory
 app.use(express.static('public'));
 
-const ROOMS = ['Kitchen', 'Ballroom', 'Conservatory', 'Billiard Room', 'Library', 'Study', 'Hall', 'Lounge', 'Dining Room'];
+const ROOMS = ['Study', 'Hall', 'Lounge', 'Library', 'Billiard Room', 'Dining Room', 'Conservatory', 'Ballroom', 'Kitchen'];
 const CHARACTERS = ['Col. Mustard', 'Prof. Plum', 'Mr. Green', 'Mrs. Peacock', 'Miss Scarlet', 'Dr. Orchid'];
 const WEAPONS = ['Candlestick', 'Dagger', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench'];
 
@@ -48,16 +49,19 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Confidential Case File Selection
         const solutionRoom = ROOMS[Math.floor(Math.random() * ROOMS.length)];
         const solutionWeapon = WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
         const solutionSuspect = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
         
         gameState.caseFile = { room: solutionRoom, weapon: solutionWeapon, suspect: solutionSuspect };
 
+        // Remaining Deck Combination & Shuffling
         let deckRooms = ROOMS.filter(r => r !== solutionRoom);
         let deckWeapons = WEAPONS.filter(w => w !== solutionWeapon);
         let deckSuspects = CHARACTERS.filter(s => s !== solutionSuspect);
         let fullDeck = [...deckRooms, ...deckWeapons, ...deckSuspects];
+        
         fullDeck.sort(() => Math.random() - 0.5);
 
         gameState.players.forEach((player) => {
@@ -110,6 +114,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000, () => {
-    console.log('Server running');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
