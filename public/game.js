@@ -1,3 +1,391 @@
+const socket = io();
+
+const THEMES = {
+  ocean: { bg: '#082f49', cardBg: '#0c4a6e', dieBg: '#0369a1', accent: '#38bdf8' },
+  purple: { bg: '#2e1065', cardBg: '#3b0764', dieBg: '#6b21a8', accent: '#c084fc' },
+  slate: { bg: '#0f172a', cardBg: '#1e293b', dieBg: '#334155', accent: '#38bdf8' },
+  forest: { bg: '#022c22', cardBg: '#064e3b', dieBg: '#047857', accent: '#34d399' },
+  crimson: { bg: '#450a0a', cardBg: '#7f1d1d', dieBg: '#991b1b', accent: '#fca5a5' },
+  amber: { bg: '#451a03', cardBg: '#78350f', dieBg: '#b45309', accent: '#fde047' }
+};
+
+let playerName = '';
+let currentTheme = 'ocean';
+let board = [];
+let gridRows = 4;
+let timeLeft = 180;
+let timerInterval = null;
+let selectedDieIndices = [];
+let mySubmittedWords = [];
+let wordToDelete = null;
+let allowNonTouching = false;
+let isHost = false;
+let isSoloGame = false;
+let finalLeaderboardData = [];
+let targetKickId = null;
+let showingWordDetails = false;
+let latestSettings = {};
+
+const screens = {
+  landing: document.getElementById('screen-landing'),
+  soloOptions: document.getElementById('screen-solo-options'),
+  multiLobby: document.getElementById('screen-multi-lobby'),
+  countdown: document.getElementById('screen-countdown'),
+  game: document.getElementById('screen-game'),
+  results: document.getElementById('screen-results')
+};
+
+function applyTheme(themeName) {
+  const theme = THEMES[themeName] || THEMES.ocean;
+  document.documentElement.style.setProperty('--bg', theme.bg);
+  document.documentElement.style.setProperty('--card-bg', theme.cardBg);
+  document.documentElement.style.setProperty('--die-bg', theme.dieBg);
+  document.documentElement.style.setProperty('--accent', theme.accent);
+  document.getElementById('sticky-header').style.backgroundColor = theme.bg;
+}
+
+function showScreen(name) {
+  Object.keys(screens).forEach(k => screens[k].classList.add('hidden'));
+  screens[name].classList.remove('hidden');
+  const timerEl = document.getElementById('header-timer');
+  if (name === 'game') {
+    timerEl.classList.remove('hidden');
+  } else {
+    timerEl.classList.add('hidden');
+  }
+}
+
+document.getElementById('select-theme').onchange = (e) => {
+  currentTheme = e.target.value;
+  applyTheme(currentTheme);
+};
+
+document.getElementById('select-lobby-theme').onchange = (e) => {
+  currentTheme = e.target.value;
+  applyTheme(currentTheme);
+  socket.emit('update-theme', currentTheme);
+};
+
+document.getElementById('btn-solo-play').onclick = () => {
+  playerName = document.getElementById('input-name').value.trim();
+  if (!playerName) {
+    alert('Please enter your name before starting.');
+    return;
+  }
+  isSoloGame = true;
+  showScreen('soloOptions');
+};
+
+document.getElementById('btn-back-landing').onclick = () => {
+  showScreen('landing');
+};
+
+document.getElementById('btn-leave-lobby').onclick = () => {
+  showScreen('landing');
+};
+
+document.getElementById('btn-multi-play').onclick = () => {
+  playerName = document.getElementById('input-name').value.trim();
+  if (!playerName) {
+    alert('Please enter your name before joining the multiplayer lobby.');
+    return;
+  }
+  isSoloGame = false;
+  currentTheme = document.getElementById('select-theme').value;
+  document.getElementById('select-lobby-theme').value = currentTheme;
+  socket.emit('join-lobby', { name: playerName, theme: currentTheme });
+};
+
+socket.on('join-success', () => {
+  showScreen('multiLobby');
+});
+
+socket.on('name-taken', (msg) => {
+  alert(msg);
+});
+
+document.getElementById('btn-launch-solo').onclick = () => {
+  const gSize = document.getElementById('solo-grid-size').value;
+  const tDur = document.getElementById('solo-timer-duration').value;
+  const wRule = document.getElementById('solo-word-rule').value;
+
+  if (!gSize || !tDur || wRule === "") {
+    alert('Please select all game options from the dropdown menus before starting.');
+    return;
+  }
+
+  gridRows = parseInt(gSize);
+  timeLeft = parseInt(tDur);
+  allowNonTouching = (wRule === 'true');
+
+  applyTheme(currentTheme);
+  board = rollBoardLocal(gridRows);
+  mySubmittedWords = [];
+
+  showScreen('game');
+  renderBoard(board, gridRows);
+  renderMyGuessesTable();
+  updateScorePreview();
+  startTimer();
+};
+
+function rollBoardLocal(rows) {
+  const BOGGLE_DICE_4x4 = [
+    ['A', 'A', 'C', 'I', 'O', 'T'], ['A', 'B', 'J', 'O', 'B', 'O'],
+    ['A', 'C', 'H', 'O', 'P', 'S'], ['D', 'E', 'E', 'N', 'H', 'W'],
+    ['D', 'E', 'L', 'R', 'V', 'Y'], ['A', 'I', 'S', 'O', 'F', 'R'],
+    ['E', 'H', 'E', 'G', 'K', 'N'], ['E', 'I', 'I', 'T', 'T', 'S'],
+    ['E', 'M', 'O', 'T', 'T', 'T'], ['E', 'N', 'S', 'S', 'I', 'U'],
+    ['F', 'I', 'P', 'R', 'S', 'Y'], ['G', 'O', 'R', 'R', 'W', 'V'],
+    ['I', 'P', 'S', 'S', 'E', 'F'], ['L', 'I', 'N', 'R', 'T', 'U'],
+    ['W', 'O', 'B', 'O', 'J', 'A'], ['N', 'M', 'T', 'O', 'I', 'C']
+  ];
+  let pool = [...BOGGLE_DICE_4x4].sort(() => Math.random() - 0.5);
+  return pool.slice(0, rows * rows).map(die => die[Math.floor(Math.random() * die.length)]);
+}
+
+const hostActionBtn = document.getElementById('btn-host-action');
+hostActionBtn.onclick = () => {
+  if (isHost) {
+    socket.emit('release-host');
+  } else {
+    document.getElementById('pin-modal').classList.remove('hidden');
+  }
+};
+
+document.getElementById('btn-pin-cancel').onclick = () => {
+  document.getElementById('pin-modal').classList.add('hidden');
+};
+
+document.getElementById('btn-pin-submit').onclick = () => {
+  const pin = document.getElementById('input-pin-code').value.trim();
+  socket.emit('claim-host', pin);
+};
+
+socket.on('host-success', () => {
+  document.getElementById('pin-modal').classList.add('hidden');
+  isHost = true;
+  hostActionBtn.innerText = 'Release Host';
+  hostActionBtn.style.background = '#991b1b';
+  document.getElementById('host-controls').classList.remove('hidden');
+});
+
+socket.on('host-released', () => {
+  isHost = false;
+  hostActionBtn.innerText = '🔒 Host Access';
+  hostActionBtn.style.background = 'var(--die-bg)';
+  document.getElementById('host-controls').classList.add('hidden');
+});
+
+socket.on('host-fail', () => {
+  alert('Invalid Host PIN');
+});
+
+['host-grid-size', 'host-timer-duration', 'host-word-rule'].forEach(id => {
+  document.getElementById(id).onchange = () => {
+    if (!isHost) return;
+    socket.emit('update-settings', {
+      gridSize: document.getElementById('host-grid-size').value,
+      duration: document.getElementById('host-timer-duration').value,
+      allowNonTouching: document.getElementById('host-word-rule').value,
+      theme: currentTheme
+    });
+  };
+});
+
+socket.on('room-settings-updated', (settings) => {
+  latestSettings = settings;
+});
+
+socket.on('update-room', (state) => {
+  const list = document.getElementById('multi-player-list');
+  list.innerHTML = '';
+  const uniqueMap = new Map();
+  state.players.forEach(p => uniqueMap.set(p.id, p));
+
+  uniqueMap.forEach(p => {
+    const li = document.createElement('li');
+    li.textContent = `${p.name} ${p.isHost ? '(Host)' : ''} - [Theme: ${p.theme}]`;
+    li.style.cursor = isHost && !p.isHost ? 'pointer' : 'default';
+    if (isHost && !p.isHost) {
+      li.onclick = () => {
+        targetKickId = p.id;
+        document.getElementById('kick-player-name').innerText = p.name;
+        document.getElementById('kick-modal').classList.remove('hidden');
+      };
+    }
+    list.appendChild(li);
+  });
+});
+
+document.getElementById('btn-kick-cancel').onclick = () => {
+  document.getElementById('kick-modal').classList.add('hidden');
+  targetKickId = null;
+};
+
+document.getElementById('btn-kick-confirm').onclick = () => {
+  if (targetKickId) {
+    socket.emit('remove-player', targetKickId);
+  }
+  document.getElementById('kick-modal').classList.add('hidden');
+  targetKickId = null;
+};
+
+socket.on('kicked-from-lobby', () => {
+  alert('You have been removed from the lobby by the host.');
+  showScreen('landing');
+});
+
+document.getElementById('btn-start-multi-game').onclick = () => {
+  if (isHost) {
+    const gSize = document.getElementById('host-grid-size').value;
+    const tDur = document.getElementById('host-timer-duration').value;
+    const wRule = document.getElementById('host-word-rule').value;
+
+    if (!gSize || !tDur || wRule === "") {
+      alert('Please select all game options from the dropdown menus before launching.');
+      return;
+    }
+    socket.emit('start-countdown');
+  }
+};
+
+socket.on('run-countdown', (settings) => {
+  latestSettings = settings;
+  showScreen('countdown');
+  
+  const rulesBox = document.getElementById('countdown-rules-display');
+  const sizeLabel = settings.gridSize === '4' ? '4x4 Standard' : settings.gridSize === '5' ? '5x5 Large' : '6x6 Jumbo';
+  const durLabel = `${parseInt(settings.duration) / 60} Minute(s)`;
+  const ruleLabel = settings.allowNonTouching === 'true' ? 'Allow Non-Touching Words' : 'Adjacent Tiles Only';
+  rulesBox.innerHTML = `<strong>Game Rules:</strong> Grid: ${sizeLabel} | Time: ${durLabel} | Rule: ${ruleLabel}`;
+
+  const words = ['THREE', 'TWO', 'ONE', 'GO'];
+  let idx = 0;
+  const boardEl = document.getElementById('countdown-board');
+  boardEl.innerHTML = '';
+  
+  function renderCumulativeStep() {
+    if (idx < words.length) {
+      const currentWord = words[idx];
+      const rowDiv = document.createElement('div');
+      rowDiv.style.cssText = "display: flex; gap: 8px; justify-content: center;";
+      for (let char of currentWord) {
+        const tile = document.createElement('div');
+        tile.className = 'die';
+        tile.style.width = '45px';
+        tile.style.height = '45px';
+        tile.style.fontSize = '1.6rem';
+        tile.innerText = char;
+        rowDiv.appendChild(tile);
+      }
+      boardEl.appendChild(rowDiv);
+      idx++;
+      setTimeout(renderCumulativeStep, 1000);
+    }
+  }
+  renderCumulativeStep();
+});
+
+socket.on('start-game-play', (data) => {
+  board = data.board;
+  gridRows = parseInt(data.settings.gridSize);
+  timeLeft = parseInt(data.settings.duration);
+  allowNonTouching = (data.settings.allowNonTouching === 'true' || data.settings.allowNonTouching === true);
+  mySubmittedWords = [];
+
+  showScreen('game');
+  renderBoard(board, gridRows);
+  renderMyGuessesTable();
+  updateScorePreview();
+  startTimer();
+});
+
+function getWordScore(len, isTouching) {
+  if (len < 1) return 0;
+  let base = len <= 3 ? len : len <= 8 ? (len === 4 ? 6 : len === 5 ? 8 : len === 6 ? 10 : len === 7 ? 12 : 14) : 20;
+  return isTouching ? base : Math.floor(base / 2);
+}
+
+function updateScorePreview() {
+  const val = document.getElementById('input-word').value.trim();
+  const existing = mySubmittedWords.find(item => item.word === val.toUpperCase());
+  const isTouching = existing ? existing.isTouching : isValidWordPath(val, board, gridRows);
+  const pts = getWordScore(val.length, isTouching);
+  document.getElementById('score-preview').innerText = `Score Preview: ${pts} pts (${val.length} letters)${!isTouching ? ' [Non-touching]' : ''}`;
+}
+
+function isValidWordPath(word, board, rows) {
+  word = word.toUpperCase();
+  if (word.length < 1) return false;
+  const grid = [];
+  for (let i = 0; i < rows; i++) grid.push(board.slice(i * rows, i * rows + rows));
+
+  function search(r, c, wordIdx, visited) {
+    if (wordIdx === word.length) return true;
+    if (r < 0 || r >= rows || c < 0 || c >= rows || visited.has(`${r},${c}`)) return false;
+
+    const cellVal = grid[r][c];
+    let consumed = (cellVal === 'QU' && word.substr(wordIdx, 2) === 'QU') ? 2 : (word[wordIdx] === cellVal ? 1 : 0);
+    if (consumed === 0) return false;
+
+    visited.add(`${r},${c}`);
+    const neighbors = [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,-1], [1,0], [1,1]];
+    for (let [dr, dc] of neighbors) {
+      if (search(r + dr, c + dc, wordIdx + consumed, visited)) return true;
+    }
+    visited.delete(`${r},${c}`);
+    return false;
+  }
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < rows; c++) {
+      if (search(r, c, 0, new Set())) return true;
+    }
+  }
+  return false;
+}
+
+function triggerNonTouchingFlash() {
+  const overlay = document.getElementById('flash-overlay');
+  overlay.classList.add('active');
+  setTimeout(() => { overlay.classList.remove('active'); }, 600);
+}
+
+function submitWord(isFromTileTap) {
+  const input = document.getElementById('input-word');
+  const word = input.value.trim().toUpperCase();
+  if (!word) return;
+
+  const trulyTouching = isValidWordPath(word, board, gridRows);
+
+  if (!trulyTouching && !allowNonTouching) {
+    triggerNonTouchingFlash();
+    input.value = '';
+    updateScorePreview();
+    document.querySelectorAll('.die.selected').forEach(d => d.classList.remove('selected'));
+    selectedDieIndices = [];
+    return;
+  }
+
+  const finalTouching = isFromTileTap ? trulyTouching : trulyTouching;
+  mySubmittedWords.unshift({ word, isTouching: finalTouching });
+  renderMyGuessesTable();
+
+  input.value = '';
+  updateScorePreview();
+  document.querySelectorAll('.die.selected').forEach(d => d.classList.remove('selected'));
+  selectedDieIndices = [];
+}
+
+document.getElementById('btn-submit').onclick = () => {
+  submitWord(selectedDieIndices.length > 0);
+};
+
+document.getElementById('input-word').onkeydown = (e) => {
+  if (e.key === 'Enter') submitWord(selectedDieIndices.length > 0);
+};
+
 function renderBoard(board, rows) {
   const grid = document.getElementById('boggle-board');
   grid.className = `boggle-grid grid-${rows}`;
@@ -28,3 +416,239 @@ function renderBoard(board, rows) {
     grid.appendChild(die);
   });
 }
+
+function renderMyGuessesTable() {
+  const tbody = document.getElementById('my-guesses-body');
+  tbody.innerHTML = '';
+  mySubmittedWords.forEach(item => {
+    const tr = document.createElement('tr');
+    let pts = getWordScore(item.word.length, item.isTouching);
+    tr.innerHTML = `
+      <td>${item.word}</td>
+      <td style="text-align:center; color:${item.isTouching ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${item.isTouching ? '✓' : '✗'}</td>
+      <td style="text-align:center;">${pts}</td>
+      <td class="delete-x">✕</td>
+    `;
+    tr.querySelector('.delete-x').onclick = () => {
+      mySubmittedWords = mySubmittedWords.filter(w => w.word !== item.word);
+      renderMyGuessesTable();
+    };
+    tbody.appendChild(tr);
+  });
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  let rem = timeLeft;
+  updateTimerDisplay(rem);
+  timerInterval = setInterval(() => {
+    rem--;
+    updateTimerDisplay(rem);
+    if (rem <= 0) {
+      clearInterval(timerInterval);
+      endGame();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  const timerEl = document.getElementById('header-timer');
+  timerEl.innerText = `${m}:${s}`;
+  timerEl.classList.remove('timer-yellow', 'timer-red');
+  if (sec <= 15) timerEl.classList.add('timer-red');
+  else if (sec <= 60) timerEl.classList.add('timer-yellow');
+}
+
+document.getElementById('btn-end-early').onclick = () => {
+  clearInterval(timerInterval);
+  endGame();
+};
+
+async function endGame() {
+  const loadingOverlay = document.getElementById('loading-overlay');
+  loadingOverlay.classList.remove('hidden');
+
+  let totalScore = 0;
+  let validatedWords = [];
+
+  for (const item of mySubmittedWords) {
+    let pts = getWordScore(item.word.length, item.isTouching);
+    totalScore += pts;
+    validatedWords.push({ word: item.word, pts, isTouching: item.isTouching });
+  }
+
+  loadingOverlay.classList.add('hidden');
+
+  if (isSoloGame) {
+    renderSoloResults({ name: playerName, finalScore: totalScore, submittedWords: validatedWords });
+  } else {
+    socket.emit('submit-results', { words: validatedWords, score: totalScore });
+  }
+}
+
+socket.on('show-leaderboard', (players) => {
+  renderLeaderboard(players);
+});
+
+function renderSoloResults(player) {
+  showScreen('results');
+  document.getElementById('results-title').innerText = 'Word Breakdown';
+  document.getElementById('btn-toggle-word-details').classList.add('hidden');
+  
+  let sortedWords = [...player.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
+
+  const container = document.getElementById('results-container');
+  container.innerHTML = `
+    <div style="background:#082f49; padding:16px; border-radius:8px; display:flex; flex-direction:column; gap:12px; border: 1px solid #0369a1;">
+      <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--accent); font-size:1.1rem;">
+        <span>${player.name}: ${player.finalScore}</span>
+        <span></span>
+      </div>
+      <div>
+        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+          ${sortedWords.length > 0 ? sortedWords.map(w => `<span onclick="showDefinition('${w.word}')" style="display:inline-block; background:#0c4a6e; border:1px solid #0369a1; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.85rem;">${w.word} (${w.pts})</span>`).join('') : '<span style="color:var(--text-muted)">No words submitted</span>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLeaderboard(players) {
+  isSoloGame = false;
+  showingWordDetails = false;
+  document.getElementById('results-title').innerText = 'Leaderboard';
+  document.getElementById('btn-toggle-word-details').classList.remove('hidden');
+  document.getElementById('btn-toggle-word-details').innerText = 'View Detailed Word Breakdown';
+
+  const uniquePlayersMap = new Map();
+  players.forEach(p => {
+    uniquePlayersMap.set(p.name, p);
+  });
+  finalLeaderboardData = Array.from(uniquePlayersMap.values());
+
+  showScreen('results');
+  renderLeaderboardView();
+}
+
+function renderLeaderboardView() {
+  const container = document.getElementById('results-container');
+  container.innerHTML = '';
+
+  let sorted = [...finalLeaderboardData].sort((a, b) => b.finalScore - a.finalScore);
+  const highestScore = sorted.length > 0 ? sorted[0].finalScore : 0;
+
+  sorted.forEach((p, idx) => {
+    const div = document.createElement('div');
+    const isWinner = (p.finalScore > 0 && p.finalScore === highestScore);
+    div.style.cssText = "background:#082f49; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; border: 1px solid #0369a1;";
+    div.innerHTML = `<span>${p.name} ${isWinner ? '🏆' : ''}</span><span>${p.finalScore} pts</span>`;
+    container.appendChild(div);
+  });
+}
+
+document.getElementById('btn-toggle-word-details').onclick = () => {
+  const container = document.getElementById('results-container');
+  const toggleBtn = document.getElementById('btn-toggle-word-details');
+
+  if (!showingWordDetails) {
+    showingWordDetails = true;
+    toggleBtn.innerText = 'Back to Leaderboard';
+    document.getElementById('results-title').innerText = 'Word Breakdown';
+    container.innerHTML = '';
+    
+    const wordCounts = {};
+    finalLeaderboardData.forEach(p => {
+      p.submittedWords.forEach(w => {
+        wordCounts[w.word] = (wordCounts[w.word] || 0) + 1;
+      });
+    });
+
+    finalLeaderboardData.forEach(p => {
+      const block = document.createElement('div');
+      block.style.cssText = "background:#082f49; padding:10px; border-radius:6px; margin-bottom:8px; font-size:0.85rem;";
+      
+      let sortedWords = [...p.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
+
+      let wordsHtml = sortedWords.map(w => {
+        const isDup = wordCounts[w.word] > 1;
+        return `<span onclick="showDefinition('${w.word}')" class="${isDup ? 'duplicate-highlight' : ''}" style="display:inline-block; background:#0c4a6e; border:1px solid #0369a1; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts})</span>`;
+      }).join(' ');
+
+      block.innerHTML = `<strong>${p.name}: ${p.finalScore}</strong><div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:4px;">${wordsHtml || 'None'}</div>`;
+      container.appendChild(block);
+    });
+  } else {
+    showingWordDetails = false;
+    toggleBtn.innerText = 'View Detailed Word Breakdown';
+    document.getElementById('results-title').innerText = 'Leaderboard';
+    renderLeaderboardView();
+  }
+};
+
+async function showDefinition(word) {
+  const wordTilesContainer = document.getElementById('def-word-tiles');
+  wordTilesContainer.innerHTML = '';
+  word.toUpperCase().split('').forEach(char => {
+    const tile = document.createElement('div');
+    tile.className = 'small-die';
+    tile.innerText = char;
+    wordTilesContainer.appendChild(tile);
+  });
+
+  document.getElementById('def-content').innerText = 'Loading definition...';
+  document.getElementById('definition-modal').classList.remove('hidden');
+
+  const cleanWord = word.toLowerCase().trim();
+  const endpoints = [
+    `https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`,
+    `https://dictionary.yabt.com/api/v1/english/${cleanWord}`
+  ];
+
+  let success = false;
+  for (let url of endpoints) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        let html = '';
+        if (Array.isArray(data)) {
+          data.forEach(entry => {
+            if (entry.meanings) {
+              entry.meanings.forEach(m => {
+                html += `<div style="border-bottom: 1px solid #0369a1; padding-bottom: 4px; margin-bottom: 4px;"><strong>${m.partOfSpeech}:</strong>`;
+                m.definitions.slice(0, 2).forEach((d, i) => {
+                  html += `<div style="margin-top:2px;">${i+1}. ${d.definition}</div>`;
+                });
+                html += `</div>`;
+              });
+            }
+          });
+        }
+        if (html) {
+          document.getElementById('def-content').innerHTML = html;
+          success = true;
+          break;
+        }
+      }
+    } catch (e) {
+      // try next endpoint
+    }
+  }
+
+  if (!success) {
+    document.getElementById('def-content').innerHTML = `
+      <div>No definition found.</div>
+      <a href="https://www.google.com/search?q=define+${encodeURIComponent(cleanWord)}" target="_blank" style="color:var(--accent); display:inline-block; margin-top:8px;">Search Google for "${cleanWord}" &rarr;</a>
+    `;
+  }
+}
+
+document.getElementById('def-close-x').onclick = () => {
+  document.getElementById('definition-modal').classList.add('hidden');
+};
+
+document.getElementById('btn-restart').onclick = () => {
+  showScreen('landing');
+};

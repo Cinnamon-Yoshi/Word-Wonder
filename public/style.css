@@ -1,27 +1,77 @@
-/* Dynamic Grid Sizing Fix */
-.boggle-grid { 
-  display: grid; 
-  gap: 8px; 
-  margin: 10px 0; 
-  width: 100%; 
+:root {
+  --bg: #082f49;
+  --card-bg: #0c4a6e;
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #facc15;
+  --die-bg: #0369a1;
 }
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 16px; transition: background-color 0.3s; position: relative; }
+
+#flash-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(239, 68, 68, 0.9); display: flex; align-items: center; justify-content: center;
+  z-index: 3000; opacity: 0; pointer-events: none; transition: opacity 0.2s ease-in-out;
+}
+#flash-overlay.active { opacity: 1; pointer-events: auto; }
+.flash-message { font-size: 2.2rem; font-weight: 900; color: white; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+
+.sticky-header {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1000;
+  width: 100%;
+  max-width: 420px;
+  padding: 12px 0;
+  margin: 0 auto 12px auto;
+  border-bottom: 1px solid #0c4a6e;
+  transition: background-color 0.3s;
+}
+.app-header { display: flex; justify-content: space-between; align-items: center; }
+h1 { font-size: 1.3rem; color: var(--accent); display: flex; align-items: center; gap: 2px; }
+.version-tag { font-size: 0.75rem; color: var(--text-muted); font-weight: bold; background: #0c4a6e; padding: 2px 6px; border-radius: 4px; border: 1px solid #0369a1; }
+.timer-display { font-size: 1.1rem; font-weight: bold; color: var(--accent); transition: color 0.3s; }
+.timer-yellow { color: var(--warning) !important; }
+.timer-red { color: var(--danger) !important; animation: pulse 1s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+.container { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 12px; transition: background-color 0.3s; }
+input, button, select { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #0369a1; background: #082f49; color: var(--text); font-size: 1rem; outline: none; }
+input:focus, select:focus { border-color: var(--accent); }
+button { background: var(--accent); color: #082f49; font-weight: 700; border: none; cursor: pointer; transition: background 0.2s; }
+button:active { background: var(--accent-hover); }
+.hidden { display: none !important; }
+
+.boggle-grid { display: grid; gap: 8px; margin: 10px 0; width: 100%; }
 .boggle-grid.grid-4 { grid-template-columns: repeat(4, 1fr); }
 .boggle-grid.grid-5 { grid-template-columns: repeat(5, 1fr); }
 .boggle-grid.grid-6 { grid-template-columns: repeat(6, 1fr); }
 
-.die { 
-  aspect-ratio: 1; 
-  background: var(--die-bg); 
-  border-radius: 8px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  font-size: 2.4rem; 
-  font-weight: 900; 
-  color: var(--text); 
-  cursor: pointer; 
-  user-select: none; 
-  transition: background 0.1s, transform 0.1s; 
-}
-.boggle-grid.grid-5 .die { font-size: 1.8rem; }
-.boggle-grid.grid-6 .die { font-size: 1.4rem; }
+.die { aspect-ratio: 1; background: var(--die-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: var(--text); cursor: pointer; user-select: none; transition: background 0.1s, transform 0.1s; }
+.boggle-grid.grid-5 .die { font-size: 2.1rem; }
+.boggle-grid.grid-6 .die { font-size: 1.6rem; }
+.die.selected { background: var(--accent); color: #082f49; transform: scale(0.95); box-shadow: 0 0 10px var(--accent); }
+
+.small-die { width: 40px; height: 40px; background: var(--die-bg); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; color: var(--text); }
+
+.word-input-container { display: flex; gap: 8px; }
+
+.guesses-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: left; }
+.guesses-table th { color: var(--text-muted); font-size: 0.75rem; padding: 6px; border-bottom: 1px solid #0369a1; }
+.guesses-table td { padding: 6px; border-bottom: 1px solid #0c4a6e; }
+.delete-x { color: var(--danger); font-weight: bold; cursor: pointer; text-align: center; font-size: 1rem; }
+.delete-x:hover { color: #f87171; }
+
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(8,47,73,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; gap: 12px; font-weight: bold; color: var(--accent); }
+
+.duplicate-highlight { background: rgba(250, 204, 21, 0.25) !important; border: 1px solid var(--warning) !important; }
