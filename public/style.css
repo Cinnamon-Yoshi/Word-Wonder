@@ -56,9 +56,9 @@ button:active { background: var(--accent-hover); }
 .boggle-grid.grid-5 { grid-template-columns: repeat(5, 1fr); }
 .boggle-grid.grid-6 { grid-template-columns: repeat(6, 1fr); }
 
-.die { aspect-ratio: 1; background: var(--die-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: var(--text); cursor: pointer; user-select: none; transition: background 0.1s, transform 0.1s; }
-.boggle-grid.grid-5 .die { font-size: 2.1rem; }
-.boggle-grid.grid-6 .die { font-size: 1.6rem; }
+.die { aspect-ratio: 1; background: var(--die-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: var(--text); cursor: pointer; user-select: none; transition: background 0.1s, transform 0.1s; }
+.boggle-grid.grid-5 .die { font-size: 1.8rem; }
+.boggle-grid.grid-6 .die { font-size: 1.4rem; }
 .die.selected { background: var(--accent); color: #082f49; transform: scale(0.95); box-shadow: 0 0 10px var(--accent); }
 
 .small-die { width: 40px; height: 40px; background: var(--die-bg); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; color: var(--text); }

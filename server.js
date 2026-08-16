@@ -15,6 +15,7 @@ let roomState = {
         gridSize: null,
         duration: null,
         allowNonTouching: null,
+        invalidPenalty: '0',
         theme: 'ocean'
     },
     gameState: 'lobby',
@@ -66,7 +67,8 @@ io.on('connection', (socket) => {
             theme: data.theme || 'ocean',
             isHost: false,
             submittedWords: [],
-            finalScore: 0
+            finalScore: 0,
+            penaltyDeduction: 0
         };
 
         roomState.players.push(newPlayer);
@@ -142,6 +144,7 @@ io.on('connection', (socket) => {
         if (p) {
             p.submittedWords = data.words;
             p.finalScore = data.score;
+            p.penaltyDeduction = data.penaltyDeduction || 0;
         }
 
         const uniqueMap = new Map();
