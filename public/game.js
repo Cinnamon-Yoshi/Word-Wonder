@@ -40,7 +40,6 @@ function applyTheme(themeName) {
   document.documentElement.style.setProperty('--die-bg', theme.dieBg);
   document.documentElement.style.setProperty('--accent', theme.accent);
   
-  // Force immediate live background and element updates
   document.body.style.backgroundColor = theme.bg;
   const header = document.getElementById('sticky-header');
   if (header) header.style.backgroundColor = theme.bg;
@@ -67,7 +66,6 @@ function showScreen(name) {
   }
 }
 
-// Initialize theme bindings and listeners on load
 window.addEventListener('DOMContentLoaded', () => {
   const themeSelect = document.getElementById('select-theme');
   if (themeSelect) {
@@ -338,6 +336,7 @@ if (btnStartMultiGame) {
   };
 }
 
+// Fixed 5-column Countdown sequence matching 3 2 1 go reference layout
 socket.on('run-countdown', (settings) => {
   showScreen('countdown');
   const rulesBox = document.getElementById('countdown-rules-display');
@@ -348,31 +347,38 @@ socket.on('run-countdown', (settings) => {
     rulesBox.innerHTML = `<strong>Game Rules:</strong> Grid: ${sizeLabel} | Time: ${durLabel} | Rule: ${ruleLabel}`;
   }
 
-  const words = ['THREE', 'TWO', 'ONE', 'GO'];
-  let idx = 0;
+  const rowsData = [
+    ['T', 'H', 'R', 'E', 'E'],
+    ['-', 'T', 'W', 'O', '-'],
+    ['-', 'O', 'N', 'E', '-'],
+    ['-', 'G', 'O', '!', '-']
+  ];
+
+  let step = 0;
   const boardEl = document.getElementById('countdown-board');
   if (boardEl) boardEl.innerHTML = '';
   
-  function renderCumulativeStep() {
-    if (idx < words.length && boardEl) {
-      const currentWord = words[idx];
-      const rowDiv = document.createElement('div');
-      rowDiv.style.cssText = "display: flex; gap: 8px; justify-content: center;";
-      for (let char of currentWord) {
-        const tile = document.createElement('div');
-        tile.className = 'die';
-        tile.style.width = '45px';
-        tile.style.height = '45px';
-        tile.style.fontSize = '1.6rem';
-        tile.innerText = char;
-        rowDiv.appendChild(tile);
+  function renderCountdownStep() {
+    if (step < rowsData.length && boardEl) {
+      boardEl.innerHTML = '';
+      for (let r = 0; r <= step; r++) {
+        rowsData[r].forEach(char => {
+          const tile = document.createElement('div');
+          tile.className = 'die';
+          tile.style.width = '100%';
+          tile.style.aspectRatio = '1';
+          tile.style.fontSize = '1.6rem';
+          tile.innerText = char;
+          boardEl.appendChild(tile);
+        });
       }
-      boardEl.appendChild(rowDiv);
-      idx++;
-      setTimeout(renderCumulativeStep, 1000);
+      step++;
+      if (step < rowsData.length) {
+        setTimeout(renderCountdownStep, 1000);
+      }
     }
   }
-  renderCumulativeStep();
+  renderCountdownStep();
 });
 
 socket.on('start-game-play', (data) => {
@@ -627,11 +633,11 @@ function renderLeaderboard(players) {
   isSoloGame = false;
   showingWordDetails = false;
   const resultsTitle = document.getElementById('results-title');
-  if (resultsTitle) resultsTitle.innerText = 'Leaderboard';
+  if (resultsTitle) resultsTitle.innerText = 'Word Breakdown'; // set title to Word Breakdown per feedback
   const toggleDetails = document.getElementById('btn-toggle-word-details');
   if (toggleDetails) {
     toggleDetails.classList.remove('hidden');
-    toggleDetails.innerText = 'View Detailed Word Breakdown';
+    toggleDetails.innerText = 'Back to Leaderboard'; // toggle state setup
   }
 
   const uniquePlayersMap = new Map();
@@ -639,7 +645,37 @@ function renderLeaderboard(players) {
   finalLeaderboardData = Array.from(uniquePlayersMap.values());
 
   showScreen('results');
-  renderLeaderboardView();
+  renderWordBreakdownView(); // Default to Word Breakdown view sorted high to low score
+}
+
+// Ordered from highest score to lowest score
+function renderWordBreakdownView() {
+  const container = document.getElementById('results-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let sorted = [...finalLeaderboardData].sort((a, b) => b.finalScore - a.finalScore);
+  
+  const wordCounts = {};
+  sorted.forEach(p => {
+    p.submittedWords.forEach(w => {
+      wordCounts[w.word] = (wordCounts[w.word] || 0) + 1;
+    });
+  });
+
+  sorted.forEach(p => {
+    const block = document.createElement('div');
+    block.style.cssText = "background:#082f49; padding:12px; border-radius:8px; margin-bottom:8px; font-size:0.9rem; border: 1px solid #0369a1;";
+    
+    let sortedWords = [...p.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
+    let wordsHtml = sortedWords.map(w => {
+      const isDup = wordCounts[w.word] > 1;
+      return `<span onclick="showDefinition('${w.word}')" class="${isDup ? 'duplicate-highlight' : ''}" style="display:inline-block; background:#0c4a6e; border:1px solid #0369a1; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts})</span>`;
+    }).join(' ');
+
+    block.innerHTML = `<div style="font-weight:bold; color:var(--accent); margin-bottom:6px; font-size:1.05rem;">${p.name}: ${p.finalScore}</div><div style="display:flex; flex-wrap:wrap; gap:4px;">${wordsHtml || '<span style="color:var(--text-muted)">None</span>'}</div>`;
+    container.appendChild(block);
+  });
 }
 
 function renderLeaderboardView() {
@@ -662,38 +698,15 @@ function renderLeaderboardView() {
 const btnToggleDetails = document.getElementById('btn-toggle-word-details');
 if (btnToggleDetails) {
   btnToggleDetails.onclick = () => {
-    const container = document.getElementById('results-container');
     const toggleBtn = document.getElementById('btn-toggle-word-details');
     const resultsTitle = document.getElementById('results-title');
 
-    if (!showingWordDetails) {
-      showingWordDetails = true;
+    showingWordDetails = !showingWordDetails;
+    if (showingWordDetails) {
       if (toggleBtn) toggleBtn.innerText = 'Back to Leaderboard';
       if (resultsTitle) resultsTitle.innerText = 'Word Breakdown';
-      if (container) container.innerHTML = '';
-      
-      const wordCounts = {};
-      finalLeaderboardData.forEach(p => {
-        p.submittedWords.forEach(w => {
-          wordCounts[w.word] = (wordCounts[w.word] || 0) + 1;
-        });
-      });
-
-      finalLeaderboardData.forEach(p => {
-        const block = document.createElement('div');
-        block.style.cssText = "background:#082f49; padding:10px; border-radius:6px; margin-bottom:8px; font-size:0.85rem;";
-        
-        let sortedWords = [...p.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
-        let wordsHtml = sortedWords.map(w => {
-          const isDup = wordCounts[w.word] > 1;
-          return `<span onclick="showDefinition('${w.word}')" class="${isDup ? 'duplicate-highlight' : ''}" style="display:inline-block; background:#0c4a6e; border:1px solid #0369a1; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts})</span>`;
-        }).join(' ');
-
-        block.innerHTML = `<strong>${p.name}: ${p.finalScore}</strong><div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:4px;">${wordsHtml || 'None'}</div>`;
-        if (container) container.appendChild(block);
-      });
+      renderWordBreakdownView();
     } else {
-      showingWordDetails = false;
       if (toggleBtn) toggleBtn.innerText = 'View Detailed Word Breakdown';
       if (resultsTitle) resultsTitle.innerText = 'Leaderboard';
       renderLeaderboardView();
@@ -701,6 +714,7 @@ if (btnToggleDetails) {
   };
 }
 
+// Enhanced Dictionary API fetch logic to reliably parse simple words (dirt, air, etc.)
 async function showDefinition(word) {
   const wordTilesContainer = document.getElementById('def-word-tiles');
   if (wordTilesContainer) {
@@ -720,8 +734,8 @@ async function showDefinition(word) {
 
   const cleanWord = word.toLowerCase().trim();
   const endpoints = [
-    `https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`,
-    `https://dictionary.yabt.com/api/v1/english/${cleanWord}`
+    `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`,
+    `https://api.dictionaryapi.dev/api/v1/entries/en/${encodeURIComponent(cleanWord)}`
   ];
 
   let success = false;
@@ -731,14 +745,16 @@ async function showDefinition(word) {
       if (res.ok) {
         const data = await res.json();
         let html = '';
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           data.forEach(entry => {
             if (entry.meanings) {
               entry.meanings.forEach(m => {
-                html += `<div style="border-bottom: 1px solid #0369a1; padding-bottom: 4px; margin-bottom: 4px;"><strong>${m.partOfSpeech}:</strong>`;
-                m.definitions.slice(0, 2).forEach((d, i) => {
-                  html += `<div style="margin-top:2px;">${i+1}. ${d.definition}</div>`;
-                });
+                html += `<div style="border-bottom: 1px solid #0369a1; padding-bottom: 4px; margin-bottom: 4px;"><strong>${m.partOfSpeech || ''}:</strong>`;
+                if (m.definitions) {
+                  m.definitions.slice(0, 2).forEach((d, i) => {
+                    html += `<div style="margin-top:2px;">${i+1}. ${d.definition}</div>`;
+                  });
+                }
                 html += `</div>`;
               });
             }
@@ -751,7 +767,7 @@ async function showDefinition(word) {
         }
       }
     } catch (e) {
-      // try next endpoint
+      // try next endpoint fallback
     }
   }
 
