@@ -63,6 +63,10 @@ button:active { background: var(--accent-hover); }
 .boggle-grid.grid-6 .die { font-size: 2.46rem; }
 .die.selected { background: var(--accent); color: #082f49; transform: scale(0.95); box-shadow: 0 0 10px var(--accent); }
 
+/* Small tile for word definition modal header */
+.small-die { width: 40px; height: 40px; background: var(--die-bg); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; color: var(--text); }
+.red-x-tile { width: 48px; height: 48px; background: #991b1b; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+
 .word-input-container { display: flex; gap: 8px; }
 
 .word-table-container { max-height: 160px; overflow-y: auto; background: #082f49; border-radius: 8px; padding: 4px; }
@@ -71,9 +75,6 @@ button:active { background: var(--accent-hover); }
 .guesses-table td { padding: 6px; border-bottom: 1px solid #0c4a6e; }
 .delete-x { color: var(--danger); font-weight: bold; cursor: pointer; text-align: center; font-size: 1rem; }
 .delete-x:hover { color: #f87171; }
-
-.checkbox-container { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; }
-.checkbox-container input { width: auto; cursor: pointer; }
 
 .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(8,47,73,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; gap: 12px; font-weight: bold; color: var(--accent); }

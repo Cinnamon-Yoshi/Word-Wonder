@@ -12,12 +12,12 @@ let roomState = {
     players: [],
     hostId: null,
     settings: {
-        gridSize: 4,
-        duration: 180,
-        allowNonTouching: false,
+        gridSize: null,
+        duration: null,
+        allowNonTouching: null,
         theme: 'ocean'
     },
-    gameState: 'lobby', // 'lobby', 'countdown', 'playing', 'results'
+    gameState: 'lobby',
     board: []
 };
 
@@ -35,13 +35,11 @@ const BOGGLE_DICE_4x4 = [
 function rollBoard(size) {
     const totalDice = size * size;
     let pool = [...BOGGLE_DICE_4x4];
-    // If 5x5 or 6x6, pad or generate dice as needed
     while(pool.length < totalDice) {
         pool.push(['A','E','I','O','U','R']);
     }
     pool.sort(() => Math.random() - 0.5);
-    const selected = pool.slice(0, totalDice);
-    return selected.map(die => die[Math.floor(Math.random() * die.length)]);
+    return pool.slice(0, totalDice).map(die => die[Math.floor(Math.random() * die.length)]);
 }
 
 io.on('connection', (socket) => {
@@ -49,18 +47,17 @@ io.on('connection', (socket) => {
 
     socket.on('join-lobby', (data) => {
         const playerName = data.name || 'Player';
+        // Prevent duplicate socket entries
+        roomState.players = roomState.players.filter(p => p.id !== socket.id);
+
         const newPlayer = {
             id: socket.id,
             name: playerName,
             theme: data.theme || 'ocean',
-            isHost: roomState.players.length === 0,
+            isHost: false,
             submittedWords: [],
             finalScore: 0
         };
-
-        if (newPlayer.isHost) {
-            roomState.hostId = socket.id;
-        }
 
         roomState.players.push(newPlayer);
         io.emit('update-room', roomState);
@@ -73,7 +70,25 @@ io.on('connection', (socket) => {
             io.emit('update-room', roomState);
             socket.emit('host-success');
         } else {
-            socket.emit('host-fail', 'Invalid Host PIN');
+            socket.emit('host-fail');
+        }
+    });
+
+    socket.on('release-host', () => {
+        if (roomState.hostId === socket.id) {
+            const p = roomState.players.find(x => x.id === socket.id);
+            if (p) p.isHost = false;
+            roomState.hostId = null;
+            io.emit('update-room', roomState);
+            socket.emit('host-released');
+        }
+    });
+
+    socket.on('remove-player', (targetId) => {
+        if (socket.id === roomState.hostId && targetId !== roomState.hostId) {
+            roomState.players = roomState.players.filter(p => p.id !== targetId);
+            io.to(targetId).emit('kicked-from-lobby');
+            io.emit('update-room', roomState);
         }
     });
 
@@ -94,6 +109,9 @@ io.on('connection', (socket) => {
 
     socket.on('start-countdown', () => {
         if (socket.id === roomState.hostId) {
+            if (!roomState.settings.gridSize || !roomState.settings.duration || roomState.settings.allowNonTouching === null) {
+                return; // Must select all dropdowns
+            }
             roomState.gameState = 'countdown';
             roomState.board = rollBoard(parseInt(roomState.settings.gridSize));
             io.emit('run-countdown');
@@ -104,7 +122,7 @@ io.on('connection', (socket) => {
                     board: roomState.board,
                     settings: roomState.settings
                 });
-            }, 4000); // 4 steps: THREE, TWO, ONE, GO (1s each)
+            }, 4000);
         }
     });
 
@@ -115,7 +133,6 @@ io.on('connection', (socket) => {
             p.finalScore = data.score;
         }
 
-        // Check if all players submitted
         const allFinished = roomState.players.every(pl => pl.submittedWords.length > 0 || pl.finalScore !== undefined);
         if (allFinished || socket.id === roomState.hostId) {
             roomState.gameState = 'results';
@@ -128,8 +145,11 @@ io.on('connection', (socket) => {
         if (roomState.hostId === socket.id && roomState.players.length > 0) {
             roomState.players[0].isHost = true;
             roomState.hostId = roomState.players[0].id;
+        } else if (roomState.players.length === 0) {
+            roomState.hostId = null;
         }
         io.emit('update-room', roomState);
+        console.log(`Player disconnected: ${socket.id}`);
     });
 });
 

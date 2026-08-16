@@ -21,6 +21,7 @@ let wordToDelete = null;
 let allowNonTouching = false;
 let isHost = false;
 let finalLeaderboardData = [];
+let targetKickId = null;
 
 const screens = {
   landing: document.getElementById('screen-landing'),
@@ -54,6 +55,11 @@ function showScreen(name) {
 document.getElementById('select-theme').onchange = (e) => {
   currentTheme = e.target.value;
   applyTheme(currentTheme);
+};
+
+document.getElementById('select-lobby-theme').onchange = (e) => {
+  currentTheme = e.target.value;
+  applyTheme(currentTheme);
   socket.emit('update-theme', currentTheme);
 };
 
@@ -69,20 +75,31 @@ document.getElementById('btn-back-landing').onclick = () => {
 document.getElementById('btn-multi-play').onclick = () => {
   playerName = document.getElementById('input-name').value.trim() || 'Player';
   currentTheme = document.getElementById('select-theme').value;
+  document.getElementById('select-lobby-theme').value = currentTheme;
   socket.emit('join-lobby', { name: playerName, theme: currentTheme });
   showScreen('multiLobby');
 };
 
 document.getElementById('btn-launch-solo').onclick = () => {
-  gridRows = parseInt(document.getElementById('solo-grid-size').value);
-  timeLeft = parseInt(document.getElementById('solo-timer-duration').value);
-  allowNonTouching = document.getElementById('solo-chk-non-touching').checked;
+  const gSize = document.getElementById('solo-grid-size').value;
+  const tDur = document.getElementById('solo-timer-duration').value;
+  const wRule = document.getElementById('solo-word-rule').value;
+
+  if (!gSize || !tDur || wRule === "") {
+    alert('Please select all game options from the dropdown menus before starting.');
+    return;
+  }
+
+  gridRows = parseInt(gSize);
+  timeLeft = parseInt(tDur);
+  allowNonTouching = (wRule === 'true');
 
   applyTheme(currentTheme);
   board = rollBoardLocal(gridRows);
   mySubmittedWords = [];
 
   showScreen('game');
+  document.getElementById('btn-end-early').classList.remove('hidden');
   renderBoard(board, gridRows);
   renderMyGuessesTable();
   updateScorePreview();
@@ -104,13 +121,20 @@ function rollBoardLocal(rows) {
   return pool.slice(0, rows * rows).map(die => die[Math.floor(Math.random() * die.length)]);
 }
 
-// Host PIN Modal
-document.getElementById('btn-host-pin').onclick = () => {
-  document.getElementById('pin-modal').classList.remove('hidden');
+// Host Action Button (Host Access or Release)
+const hostActionBtn = document.getElementById('btn-host-action');
+hostActionBtn.onclick = () => {
+  if (isHost) {
+    socket.emit('release-host');
+  } else {
+    document.getElementById('pin-modal').classList.remove('hidden');
+  }
 };
+
 document.getElementById('btn-pin-cancel').onclick = () => {
   document.getElementById('pin-modal').classList.add('hidden');
 };
+
 document.getElementById('btn-pin-submit').onclick = () => {
   const pin = document.getElementById('input-pin-code').value.trim();
   socket.emit('claim-host', pin);
@@ -119,23 +143,32 @@ document.getElementById('btn-pin-submit').onclick = () => {
 socket.on('host-success', () => {
   document.getElementById('pin-modal').classList.add('hidden');
   isHost = true;
+  hostActionBtn.innerText = 'Release Host';
+  hostActionBtn.style.background = '#991b1b'; // Red style release button
   document.getElementById('host-controls').classList.remove('hidden');
   document.getElementById('btn-end-early').classList.remove('hidden');
-  alert('Host access granted!');
 });
 
-socket.on('host-fail', (msg) => {
-  alert(msg);
+socket.on('host-released', () => {
+  isHost = false;
+  hostActionBtn.innerText = '🔒 Host Access';
+  hostActionBtn.style.background = 'var(--die-bg)';
+  document.getElementById('host-controls').classList.add('hidden');
+  document.getElementById('btn-end-early').classList.add('hidden');
+});
+
+socket.on('host-fail', () => {
+  alert('Invalid Host PIN');
 });
 
 // Host settings sync
-['host-grid-size', 'host-timer-duration', 'host-chk-non-touching'].forEach(id => {
+['host-grid-size', 'host-timer-duration', 'host-word-rule'].forEach(id => {
   document.getElementById(id).onchange = () => {
     if (!isHost) return;
     socket.emit('update-settings', {
       gridSize: document.getElementById('host-grid-size').value,
       duration: document.getElementById('host-timer-duration').value,
-      allowNonTouching: document.getElementById('host-chk-non-touching').checked,
+      allowNonTouching: document.getElementById('host-word-rule').value,
       theme: currentTheme
     });
   };
@@ -147,38 +180,85 @@ socket.on('update-room', (state) => {
   state.players.forEach(p => {
     const li = document.createElement('li');
     li.textContent = `${p.name} ${p.isHost ? '(Host)' : ''} - [Theme: ${p.theme}]`;
+    li.style.cursor = isHost && !p.isHost ? 'pointer' : 'default';
+    if (isHost && !p.isHost) {
+      li.onclick = () => {
+        targetKickId = p.id;
+        document.getElementById('kick-player-name').innerText = p.name;
+        document.getElementById('kick-modal').classList.remove('hidden');
+      };
+    }
     list.appendChild(li);
   });
 });
 
+document.getElementById('btn-kick-cancel').onclick = () => {
+  document.getElementById('kick-modal').classList.add('hidden');
+  targetKickId = null;
+};
+
+document.getElementById('btn-kick-confirm').onclick = () => {
+  if (targetKickId) {
+    socket.emit('remove-player', targetKickId);
+  }
+  document.getElementById('kick-modal').classList.add('hidden');
+  targetKickId = null;
+};
+
+socket.on('kicked-from-lobby', () => {
+  alert('You have been removed from the lobby by the host.');
+  showScreen('landing');
+});
+
 document.getElementById('btn-start-multi-game').onclick = () => {
   if (isHost) {
+    const gSize = document.getElementById('host-grid-size').value;
+    const tDur = document.getElementById('host-timer-duration').value;
+    const wRule = document.getElementById('host-word-rule').value;
+
+    if (!gSize || !tDur || wRule === "") {
+      alert('Please select all game options from the dropdown menus before launching.');
+      return;
+    }
     socket.emit('start-countdown');
   }
 };
 
 socket.on('run-countdown', () => {
   showScreen('countdown');
-  const steps = ['THREE', 'TWO', 'ONE', 'GO'];
+  const words = ['THREE', 'TWO', 'ONE', 'GO'];
   let idx = 0;
-  const tile = document.getElementById('countdown-tile');
-  tile.innerText = steps[idx];
+  const boardEl = document.getElementById('countdown-board');
   
-  const cdInterval = setInterval(() => {
-    idx++;
-    if (idx < steps.length) {
-      tile.innerText = steps[idx];
-    } else {
-      clearInterval(cdInterval);
+  function renderCountdownStep() {
+    boardEl.innerHTML = '';
+    if (idx < words.length) {
+      const currentWord = words[idx];
+      // Render each word on its own row, with each letter in its own game tile
+      const rowDiv = document.createElement('div');
+      rowDiv.style.cssText = "display: flex; gap: 8px; justify-content: center;";
+      for (let char of currentWord) {
+        const tile = document.createElement('div');
+        tile.className = 'die';
+        tile.style.width = '55px';
+        tile.style.height = '55px';
+        tile.style.fontSize = '2rem';
+        tile.innerText = char;
+        rowDiv.appendChild(tile);
+      }
+      boardEl.appendChild(rowDiv);
+      idx++;
+      setTimeout(renderCountdownStep, 1000);
     }
-  }, 1000);
+  }
+  renderCountdownStep();
 });
 
 socket.on('start-game-play', (data) => {
   board = data.board;
   gridRows = parseInt(data.settings.gridSize);
   timeLeft = parseInt(data.settings.duration);
-  allowNonTouching = data.settings.allowNonTouching;
+  allowNonTouching = (data.settings.allowNonTouching === 'true' || data.settings.allowNonTouching === true);
   mySubmittedWords = [];
 
   showScreen('game');
@@ -369,8 +449,6 @@ async function endGame() {
   loadingOverlay.classList.add('hidden');
 
   socket.emit('submit-results', { words: validatedWords, score: totalScore });
-  
-  // If solo, show leaderboard directly
   renderLeaderboard([{ name: playerName, finalScore: totalScore, submittedWords: validatedWords }]);
 }
 
@@ -384,16 +462,24 @@ function renderLeaderboard(players) {
   const container = document.getElementById('leaderboard-container');
   container.innerHTML = '';
 
-  // Sort players lowest score to highest score for animation
-  let sorted = [...players].sort((a, b) => a.finalScore - b.finalScore);
+  // Filter out any duplicate player IDs / names to ensure clean listing
+  const uniquePlayersMap = new Map();
+  players.forEach(p => {
+    uniquePlayersMap.set(p.name, p);
+  });
+  let uniquePlayers = Array.from(uniquePlayersMap.values());
+
+  let sorted = [...uniquePlayers].sort((a, b) => a.finalScore - b.finalScore);
+  const highestScore = sorted.length > 0 ? sorted[sorted.length - 1].finalScore : 0;
 
   sorted.forEach((p, idx) => {
     setTimeout(() => {
       const div = document.createElement('div');
-      const isWinner = (idx === sorted.length - 1);
+      // Only display trophy if player score > 0 and they achieved the top score
+      const isWinner = (p.finalScore > 0 && p.finalScore === highestScore);
       div.style.cssText = "background:#082f49; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; border: 1px solid #0369a1; animation: fadeIn 0.5s;";
       div.innerHTML = `<span>${p.name} ${isWinner ? '🏆' : ''}</span><span>${p.finalScore} pts</span>`;
-      container.prepend(div); // Prepend so highest score ends up at top
+      container.prepend(div);
     }, idx * 600);
   });
 }
@@ -402,7 +488,6 @@ document.getElementById('btn-toggle-word-details').onclick = () => {
   const container = document.getElementById('leaderboard-container');
   container.innerHTML = `<h3 style="color:var(--accent); font-size:1rem; margin-bottom:6px;">Player Word Breakdown</h3>`;
   
-  // Identify duplicate words across players for highlighting
   const wordCounts = {};
   finalLeaderboardData.forEach(p => {
     p.submittedWords.forEach(w => {
@@ -423,7 +508,15 @@ document.getElementById('btn-toggle-word-details').onclick = () => {
 };
 
 async function showDefinition(word) {
-  document.getElementById('def-word').innerText = word;
+  const wordTilesContainer = document.getElementById('def-word-tiles');
+  wordTilesContainer.innerHTML = '';
+  word.toUpperCase().split('').forEach(char => {
+    const tile = document.createElement('div');
+    tile.className = 'small-die';
+    tile.innerText = char;
+    wordTilesContainer.appendChild(tile);
+  });
+
   document.getElementById('def-content').innerText = 'Loading definition...';
   document.getElementById('definition-modal').classList.remove('hidden');
 
@@ -446,7 +539,6 @@ async function showDefinition(word) {
         });
       }
     });
-    document.getElementById('definition-modal').classList.add('active');
     document.getElementById('def-content').innerHTML = html || 'No definition available.';
   } catch (e) {
     document.getElementById('def-content').innerText = 'Could not fetch definition.';
