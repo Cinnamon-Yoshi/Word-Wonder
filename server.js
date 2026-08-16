@@ -46,8 +46,19 @@ io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
 
     socket.on('join-lobby', (data) => {
-        const playerName = data.name || 'Player';
-        // Prevent duplicate socket entries
+        const playerName = (data.name || '').trim();
+        if (!playerName) {
+            socket.emit('error-msg', 'Name cannot be empty.');
+            return;
+        }
+
+        // Check for duplicate names in multiplayer lobby
+        const nameExists = roomState.players.some(p => p.name.toLowerCase() === playerName.toLowerCase() && p.id !== socket.id);
+        if (nameExists) {
+            socket.emit('name-taken', 'That name is already taken in the lobby. Please choose another.');
+            return;
+        }
+
         roomState.players = roomState.players.filter(p => p.id !== socket.id);
 
         const newPlayer = {
@@ -60,6 +71,7 @@ io.on('connection', (socket) => {
         };
 
         roomState.players.push(newPlayer);
+        socket.emit('join-success');
         io.emit('update-room', roomState);
     });
 
@@ -110,7 +122,7 @@ io.on('connection', (socket) => {
     socket.on('start-countdown', () => {
         if (socket.id === roomState.hostId) {
             if (!roomState.settings.gridSize || !roomState.settings.duration || roomState.settings.allowNonTouching === null) {
-                return; // Must select all dropdowns
+                return;
             }
             roomState.gameState = 'countdown';
             roomState.board = rollBoard(parseInt(roomState.settings.gridSize));
