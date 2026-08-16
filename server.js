@@ -8,110 +8,132 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-const ROOMS = ['Study', 'Hall', 'Lounge', 'Library', 'Billiard Room', 'Dining Room', 'Conservatory', 'Ballroom', 'Kitchen'];
-const CHARACTERS = ['Col. Mustard', 'Prof. Plum', 'Mr. Green', 'Mrs. Peacock', 'Miss Scarlet', 'Dr. Orchid'];
-const WEAPONS = ['Candlestick', 'Dagger', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench'];
-
-let gameState = {
+let roomState = {
     players: [],
-    turnIndex: 0,
-    gameStarted: false,
-    caseFile: {},
-    phase: 'waiting'
+    hostId: null,
+    settings: {
+        gridSize: 4,
+        duration: 180,
+        allowNonTouching: false,
+        theme: 'ocean'
+    },
+    gameState: 'lobby', // 'lobby', 'countdown', 'playing', 'results'
+    board: []
 };
+
+const BOGGLE_DICE_4x4 = [
+    ['A', 'A', 'C', 'I', 'O', 'T'], ['A', 'B', 'J', 'O', 'B', 'O'],
+    ['A', 'C', 'H', 'O', 'P', 'S'], ['D', 'E', 'E', 'N', 'H', 'W'],
+    ['D', 'E', 'L', 'R', 'V', 'Y'], ['A', 'I', 'S', 'O', 'F', 'R'],
+    ['E', 'H', 'E', 'G', 'K', 'N'], ['E', 'I', 'I', 'T', 'T', 'S'],
+    ['E', 'M', 'O', 'T', 'T', 'T'], ['E', 'N', 'S', 'S', 'I', 'U'],
+    ['F', 'I', 'P', 'R', 'S', 'Y'], ['G', 'O', 'R', 'R', 'W', 'V'],
+    ['I', 'P', 'S', 'S', 'E', 'F'], ['L', 'I', 'N', 'R', 'T', 'U'],
+    ['W', 'O', 'B', 'O', 'J', 'A'], ['N', 'M', 'T', 'O', 'I', 'C']
+];
+
+function rollBoard(size) {
+    const totalDice = size * size;
+    let pool = [...BOGGLE_DICE_4x4];
+    // If 5x5 or 6x6, pad or generate dice as needed
+    while(pool.length < totalDice) {
+        pool.push(['A','E','I','O','U','R']);
+    }
+    pool.sort(() => Math.random() - 0.5);
+    const selected = pool.slice(0, totalDice);
+    return selected.map(die => die[Math.floor(Math.random() * die.length)]);
+}
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
 
-    socket.on('join-game', (playerName) => {
-        if (gameState.gameStarted) {
-            socket.emit('error-msg', 'Game already in progress.');
-            return;
-        }
-
-        const assignedCharacter = CHARACTERS[gameState.players.length % CHARACTERS.length];
+    socket.on('join-lobby', (data) => {
+        const playerName = data.name || 'Player';
         const newPlayer = {
             id: socket.id,
-            name: playerName || `Player ${gameState.players.length + 1}`,
-            character: assignedCharacter,
-            cards: [],
-            location: 'Hall'
+            name: playerName,
+            theme: data.theme || 'ocean',
+            isHost: roomState.players.length === 0,
+            submittedWords: [],
+            finalScore: 0
         };
 
-        gameState.players.push(newPlayer);
-        io.emit('update-lobby', gameState.players);
-    });
-
-    socket.on('start-game', () => {
-        if (gameState.players.length < 2) {
-            socket.emit('error-msg', 'Need at least 2 players to start.');
-            return;
+        if (newPlayer.isHost) {
+            roomState.hostId = socket.id;
         }
 
-        const solutionRoom = ROOMS[Math.floor(Math.random() * ROOMS.length)];
-        const solutionWeapon = WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
-        const solutionSuspect = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
-        
-        gameState.caseFile = { room: solutionRoom, weapon: solutionWeapon, suspect: solutionSuspect };
+        roomState.players.push(newPlayer);
+        io.emit('update-room', roomState);
+    });
 
-        let deckRooms = ROOMS.filter(r => r !== solutionRoom);
-        let deckWeapons = WEAPONS.filter(w => w !== solutionWeapon);
-        let deckSuspects = CHARACTERS.filter(s => s !== solutionSuspect);
-        let fullDeck = [...deckRooms, ...deckWeapons, ...deckSuspects];
-        
-        fullDeck.sort(() => Math.random() - 0.5);
+    socket.on('claim-host', (pin) => {
+        if (pin === '8888') {
+            roomState.players.forEach(p => p.isHost = (p.id === socket.id));
+            roomState.hostId = socket.id;
+            io.emit('update-room', roomState);
+            socket.emit('host-success');
+        } else {
+            socket.emit('host-fail', 'Invalid Host PIN');
+        }
+    });
 
-        gameState.players.forEach((player) => {
-            player.cards = [];
-        });
-        
-        let cardIndex = 0;
-        while (cardIndex < fullDeck.length) {
-            for (let i = 0; i < gameState.players.length && cardIndex < fullDeck.length; i++) {
-                gameState.players[i].cards.push(fullDeck[cardIndex]);
-                cardIndex++;
-            }
+    socket.on('update-settings', (settings) => {
+        if (socket.id === roomState.hostId) {
+            roomState.settings = settings;
+            io.emit('room-settings-updated', roomState.settings);
+        }
+    });
+
+    socket.on('update-theme', (theme) => {
+        const p = roomState.players.find(x => x.id === socket.id);
+        if (p) {
+            p.theme = theme;
+            io.emit('update-room', roomState);
+        }
+    });
+
+    socket.on('start-countdown', () => {
+        if (socket.id === roomState.hostId) {
+            roomState.gameState = 'countdown';
+            roomState.board = rollBoard(parseInt(roomState.settings.gridSize));
+            io.emit('run-countdown');
+            
+            setTimeout(() => {
+                roomState.gameState = 'playing';
+                io.emit('start-game-play', {
+                    board: roomState.board,
+                    settings: roomState.settings
+                });
+            }, 4000); // 4 steps: THREE, TWO, ONE, GO (1s each)
+        }
+    });
+
+    socket.on('submit-results', (data) => {
+        const p = roomState.players.find(x => x.id === socket.id);
+        if (p) {
+            p.submittedWords = data.words;
+            p.finalScore = data.score;
         }
 
-        gameState.gameStarted = true;
-        gameState.phase = 'playing';
-
-        gameState.players.forEach(player => {
-            io.to(player.id).emit('game-started', {
-                hand: player.cards,
-                players: gameState.players,
-                turn: gameState.players[gameState.turnIndex].id
-            });
-        });
-    });
-
-    socket.on('move-player', (newLocation) => {
-        const player = gameState.players.find(p => p.id === socket.id);
-        if (!player || gameState.players[gameState.turnIndex].id !== socket.id) return;
-
-        player.location = newLocation;
-        io.emit('board-updated', gameState.players);
-    });
-
-    socket.on('end-turn', () => {
-        if (gameState.players[gameState.turnIndex].id !== socket.id) return;
-
-        gameState.turnIndex = (gameState.turnIndex + 1) % gameState.players.length;
-        io.emit('turn-changed', gameState.players[gameState.turnIndex].id);
+        // Check if all players submitted
+        const allFinished = roomState.players.every(pl => pl.submittedWords.length > 0 || pl.finalScore !== undefined);
+        if (allFinished || socket.id === roomState.hostId) {
+            roomState.gameState = 'results';
+            io.emit('show-leaderboard', roomState.players);
+        }
     });
 
     socket.on('disconnect', () => {
-        gameState.players = gameState.players.filter(p => p.id !== socket.id);
-        if (gameState.players.length === 0) {
-            gameState.gameStarted = false;
-            gameState.turnIndex = 0;
+        roomState.players = roomState.players.filter(p => p.id !== socket.id);
+        if (roomState.hostId === socket.id && roomState.players.length > 0) {
+            roomState.players[0].isHost = true;
+            roomState.hostId = roomState.players[0].id;
         }
-        io.emit('update-lobby', gameState.players);
-        console.log(`Player disconnected: ${socket.id}`);
+        io.emit('update-room', roomState);
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Clue server running on port ${PORT}`);
+    console.log(`Word Wonder server running on port ${PORT}`);
 });
