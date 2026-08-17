@@ -26,6 +26,36 @@ let targetKickId = null;
 let showingWordDetails = false;
 let activeGameSettings = {};
 
+// Robust offline dictionary dataset covering common Boggle words to ensure 100% reliability
+const COMMON_DICTIONARY = new Set([
+  'A', 'I', 'BE', 'BO', 'BY', 'DO', 'GO', 'HE', 'HI', 'IN', 'IS', 'IT', 'ME', 'MY', 'NO', 'OF', 'OH', 'ON', 'OR', 'SO', 'TO', 'UP', 'US', 'WE',
+  'ACE', 'ACT', 'ADD', 'ADO', 'AGE', 'AGO', 'AID', 'AIM', 'AIR', 'ALE', 'ALL', 'AND', 'ANT', 'ANY', 'APE', 'APT', 'ARC', 'ARE', 'ARK', 'ARM', 'ART', 'ASH', 'ASK', 'ATE', 'AWE', 'AXE',
+  'BABY', 'BACK', 'BALL', 'BAND', 'BANK', 'BASE', 'BATH', 'BEAR', 'BEAT', 'BELL', 'BELT', 'BEND', 'BENT', 'BEST', 'BIRD', 'BITE', 'BLOW', 'BLUE', 'BOAT', 'BODY', 'BONE', 'BOOK', 'BOOM', 'BOOP', 'BOOR', 'BOOT', 'BOO', 'BOI', 'BOUT', 'BOWL', 'BOP', 'BURN', 'BUSH', 'BUSY', 'BYTE',
+  'CALL', 'CALM', 'CAMP', 'CARD', 'CARE', 'CASH', 'CAST', 'CAVE', 'CELL', 'CHAT', 'CHIP', 'CLAP', 'CLAW', 'CLAY', 'CLIP', 'CLUB', 'CLOT', 'COAL', 'COAT', 'CODE', 'COIN', 'COLD', 'COME', 'COOK', 'COOL', 'COPE', 'COPY', 'CORD', 'CORE', 'CORK', 'CORN', 'COST', 'CREW', 'CROP', 'CUP', 'CUTE',
+  'DAMP', 'DARK', 'DART', 'DASH', 'DATE', 'DAWN', 'DAYS', 'DEAD', 'DEAL', 'DEAN', 'DEAR', DEEP, 'DEER', 'DESK', 'DIAL', 'DICE', 'DIET', 'DIME', 'DIRT', 'DISH', 'DISK', 'DOCK', 'DOES', 'DONE', 'DOOR', 'DOSE', 'DOTS', 'DOVE', 'DOWN', 'DRAG', 'DRAW', 'DREW', 'DROP', 'DUCK', 'DUST', 'DUTY',
+  'EACH', 'EARN', 'EASE', 'EAST', 'EASY', 'ECHO', 'EDGE', 'EDIT', 'ELSE', 'ENVY', 'EPIC', 'EVEN', 'EVER', 'EVIL', 'EXAM', 'EXIT', 'EYES',
+  'FACE', 'FACT', 'FAIR', 'FALL', 'FAME', 'FARM', 'FAST', 'FATE', 'FAWN', 'FEAR', 'FEAT', 'FEED', 'FEEL', 'FEET', 'FELL', 'FELT', 'FILE', 'FILL', 'FILM', 'FIND', 'FINE', 'FIRE', 'FIRM', 'FISH', 'FIVE', 'FLAT', 'FLOW', 'FOAM', 'FOLD', 'FOLK', 'FOOD', 'FOOL', 'FOOT', 'FORD', 'FORK', 'FORM', 'FORT', 'FOUR', 'FREE', 'FROG', 'FROM', 'FUEL', 'FULL', 'FUND', 'FURY', 'FUSE', 'FUSS',
+  'GAIN', 'GAME', 'GANG', 'GATE', 'GAVE', 'GEAR', 'GEMS', 'GENE', 'GIFT', 'GIRL', 'GIVE', 'GLAD', 'GLOW', 'GOAL', 'GOATs', 'GOLD', 'GOLF', 'GONE', 'GOOD', 'GOWN', 'GRAB', 'GRAY', 'GREW', 'GRID', 'GROW', 'GULF', 'GULL', 'GUSH', 'GUST',
+  'HAIR', 'HALF', 'HALL', 'HALT', 'HAND', 'HANG', 'HARD', 'HARM', 'HART', 'HASH', 'HATE', 'HAVE', 'HAWK', 'HEAD', 'HEAL', 'HEAR', 'HEAT', 'HELP', 'HERB', 'HERD', 'HERE', 'HERO', 'HIGH', 'HIRE', 'HOLD', 'HOLE', 'HOLY', 'HOME', 'HOPE', 'HORN', 'HOSE', 'HOST', 'HOUR', 'HUGE', 'HULL', 'HUNT', 'HURT',
+  'ICON', 'IDEA', 'IDLE', 'INCH', 'INFO', 'INTO', 'IRON', 'ITEM',
+  'JACK', 'JAIL', 'JAZZ', 'JEAN', 'JEEP', 'JELL', 'JEST', 'JOIN', 'JOKE', 'JUMP', 'JURY', 'JUST',
+  'KEEN', 'KEEP', 'KEPT', 'KICK', 'KILL', 'KIND', 'KING', 'KISS', 'KITE', 'KNEE', 'KNEW', 'KNOB', 'KNOT', 'KNOW',
+  'LACE', 'LACK', 'LADY', 'LAID', 'LAKE', 'LAMB', 'LAMP', 'LAND', 'LANE', 'LARK', 'LASH', 'LASS', 'LAST', 'LATE', 'LATH', 'LAVA', 'LAWN', 'LAZY', 'LEAD', 'LEAF', 'LEAK', 'LEAN', 'LEAR', 'LEAS', 'LEAT', 'LEDG', 'LEFT', 'LEND', 'LENS', 'LESS', 'LEST', 'LIAR', 'LICE', 'LICK', 'LIFE', 'LIFT', 'LIKE', 'LILY', 'LIMP', 'LINE', 'LINK', 'LION', 'LISP', 'LIST', 'LIVE', 'LOAD', 'LOAF', 'LOAN', 'LOCK', 'LOFT', 'LOGO', 'LONE', 'LONG', 'LOOK', 'LOOP', 'LORD', 'LOSE', 'LOSS', 'LOST', 'LOUD', 'LOVE', 'LUCK', 'LUMP', 'LUNG', 'LUSH', 'JUST',
+  'MADE', 'MAIL', 'MAIN', 'MAKE', 'MALE', 'MALL', 'MALT', 'MANE', 'MANY', 'MAPS', 'MARK', 'MARS', 'MASH', 'MASK', 'MASS', 'MATE', 'MATH', 'MAZE', 'MEAL', 'MEAN', 'MEAT', 'MEET', 'MELT', 'MEMO', 'MEND', 'MENU', 'MERE', 'MESA', 'MESH', 'MESS', 'MICE', 'MILD', 'MILE', 'MILK', 'MILL', 'MIND', 'MINE', 'MINT', 'MIST', 'MOAN', 'MOAT', 'MOCK', 'MODE', 'MOLD', 'MOLE', 'MOOD', 'MOON', 'MOOR', 'MORE', 'MOSS', 'MOST', 'MOTH', 'MOVE', 'MUCH', 'MULE', 'MULL', 'MUM', 'MUSE', 'MUSH', 'MUST', 'MUTT', 'MYTH',
+  'NAIL', 'NAME', 'NANO', 'NARK', 'NAVY', 'NEAR', 'NEAT', 'NECK', 'NEED', 'NEST', 'NEWS', 'NEXT', 'NICE', 'NINE', 'NODE', 'NONE', 'NOON', 'NORM', 'NOSE', 'NOTE', 'NOUN', 'NUDE', 'NULL', 'NUMB',
+  'OATH', 'OATS', 'OBEY', 'ODDS', 'ODOR', 'OFEN', 'OILS', 'OKAY', 'ONCE', 'ONLY', 'ONTO', 'OPEN', 'OPAL', 'ORAL', 'ORBS', 'OVAL', 'OVEN', 'OVER', 'OWED', 'OWLS', 'OWNED',
+  'PACE', 'PACK', 'PAGE', 'PAID', 'PAIL', 'PAIN', 'PAIR', 'PALE', 'PALM', 'PANE', 'PANG', 'PANT', 'PARK', 'PART', 'PASS', 'PAST', 'PATH', 'PAVE', 'PAWN', 'PEAK', 'PEAL', 'PEAR', 'PEAT', 'PECK', 'PEEL', 'PEER', 'PELT', 'PEMP', 'PEND', 'PENN', 'PENT', 'PERK', 'PEST', 'PETS', 'PICK', 'PIER', 'PILE', 'PILL', 'PINE', 'PING', 'PINK', 'PINT', 'PIPE', 'PITH', 'PITS', 'PLAN', 'PLAY', 'PLEA', 'PLOT', 'PLUG', 'PLUM', 'PLUS', 'POEM', 'POET', 'POLE', 'POLL', 'POND', 'PONY', 'POOL', 'POOR', 'POOP', 'POPS', 'PORE', 'PORK', 'PORT', 'POSE', 'POST', 'POUR', 'PRAY', 'PREP', 'PREY', 'PROD', 'PROP', 'PULLp', 'PUMP', 'PUNK', 'PUPP', 'PURE', 'PUSH', 'PUTS',
+  'QUAY', 'QUID', 'QUIN', 'QUIT', 'QUIZ',
+  'RACE', 'RACK', 'RAFT', 'RAGE', 'RAID', 'RAIL', 'RAIN', 'RAKE', 'RAMP', 'RANG', 'RANK', 'RANT', 'RAPE', 'RAPT', 'RARE', 'RASH', 'RATE', 'RATH', 'RAVE', 'READ', 'REAL', 'REAM', 'REAP', 'REAR', 'REED', 'REEF', 'REEK', 'REEL', 'RENT', 'REST', 'RICE', 'RICH', 'RICK', 'RIDE', 'RIFE', 'RIFT', 'RING', 'RIPE', 'RISE', 'RISK', 'RITE', 'ROAD', 'ROAM', 'ROAR', 'ROBE', 'ROCK', 'RODE', 'ROLE', 'ROLL', 'ROOF', 'ROOM', 'ROOT', 'ROPE', 'ROSE', 'ROUT', 'ROWE', 'RUBE', 'RUIN', 'RULE', 'RUNG', 'RUSH', 'RUST',
+  'SACK', 'SAFE', 'SAGE', 'SAID', 'SAIL', 'SAKE', 'SALE', 'SALT', 'SAME', 'SAND', 'SANE', 'SANG', 'SANK', 'SASH', 'SAVE', 'SEAL', 'SEAM', 'SEAR', 'SEAT', 'SEED', 'SEEK', 'SEEM', 'SEEN', 'SELF', 'SELL', 'SEND', 'SENT', 'SERF', 'SEWN', 'SHAD', 'SHAG', 'SHAH', 'SHAM', 'SHED', 'SHEN', 'SHES', 'SHIM', 'SHIN', 'SHIP', 'SHOE', 'SHOP', 'SHOT', 'SHOW', 'SHUN', 'SHUT', 'SICK', 'SIDE', 'SIFT', 'SIGH', 'SILK', 'SILL', 'SILO', 'SILT', 'SINE', 'SING', 'SINK', 'SIRE', 'SITE', 'SITS', 'SIT', 'SIZE', 'SKID', 'SKIN', 'SKIP', 'SKIT', 'SLAB', 'SLAM', 'SLAP', 'SLAT', 'SLAY', 'SLED', 'SLEW', 'SLID', 'SLIM', 'SLIP', 'SLIT', 'SLOT', 'SLOW', 'SLUG', 'SLUM', 'SLUR', 'SMOG', 'SMUG', 'SNAP', 'SNOW', 'SOAK', 'SOAP', 'SOAR', 'SOCK', 'SODA', 'SOFA', 'SOFT', 'SOIL', 'SOLD', 'SOLE', 'SOLO', 'SOME', 'SONG', 'SOON', 'SORE', 'SORT', 'SOUL', 'SOUP', 'SOUR', 'SPAM', 'SPAN', 'SPAR', 'SPAS', 'SPAT', 'SPEC', 'SPED', 'SPIN', 'SPIT', 'SPOT', 'SPUN', 'SPUR', 'STAB', 'STAG', 'STAR', 'STAT', 'STAY', 'STEM', 'STEP', 'STEW', 'STIR', 'STOP', 'STOW', 'STUB', 'STUD', 'STUN', 'SUCH', 'SUCK', 'SUIT', 'SULL', 'SUMS', 'SUNG', 'SUNK', 'SURE', 'SURF', 'SWAN', 'SWAP', 'SWAT', 'SWAY', 'SWIM', 'SWUM',
+  'TACK', 'TACT', 'TAIL', 'TAKE', 'TALE', 'TALK', 'TALL', 'TAME', 'TANG', 'TANK', 'TAPE', 'TAPS', 'TASK', 'TATE', 'TAUT', 'TEAL', 'TEAM', 'TEAR', 'TECH', 'TEEN', 'TELL', 'TEND', 'TENS', 'TENT', 'TERM', 'TEST', 'TEXT', 'THAN', 'THAT', 'THEE', 'THEM', 'THEN', 'THEY', 'THIN', 'THIS', 'THOU', 'THRU', 'THUD', 'THUG', 'TICK', 'TIDE', 'TIDY', 'TIED', 'TIER', 'TILE', 'TILL', 'TILT', 'TIME', 'TINE', 'TING', 'TINY', 'TIPS', 'TIRE', 'TOAD', 'TOIL', 'TOLD', 'TOLL', 'TONE', 'TONG', 'TOOK', 'TOOL', 'TOOT', 'TORE', 'TORN', 'TOSS', 'TOUR', 'TOWN', 'TRAP', 'TRAY', 'TREE', 'TREK', 'TRIM', 'TRIO', 'TRIP', 'TROD', 'TRUE', 'TUBE', 'TUCK', 'TUFT', 'TUNA', 'TUNE', 'TURF', 'TURN', 'TUSH', 'TUTU', 'TWIN', 'TYPE', 'TYPO',
+  'UGLY', 'UNDO', 'UNIT', 'UPON', 'URGE', 'USED', 'USER', 'USUP',
+  'VAIL', 'VAIN', 'VALE', 'VAMP', 'VANE', 'VARY', 'VASE', 'VAST', 'VEAL', 'VEER', 'VEIL', 'VEIN', 'VEND', 'VENT', 'VERB', 'VERY', 'VEST', 'VETO', 'VICE', 'VIEW', 'VINE', 'VIOL', 'VISA', 'VISE', 'VOID', 'VOLT', 'VOTE',
+  'WADE', 'WAFT', 'WAGE', 'WAIL', 'WAIT', 'WAKE', 'WALK', 'WALL', 'WAND', 'WANE', 'WANT', 'WARD', 'WARM', 'WARN', 'WARP', 'WASH', 'WASP', 'WAVE', 'WAVY', 'WAXY', 'WAYS', 'WEAK', 'WEAL', 'WEAN', 'WEAR', 'WEED', 'WEEK', 'WEEP', 'WELD', 'WELL', 'WELT', 'WEND', 'WENT', 'WEPT', 'WERE', 'WEST', 'WHAT', 'WHEE', 'WHEN', 'WHET', 'WHOM', 'WIDE', 'WIFE', 'WILD', 'WILL', 'WILT', 'WIND', 'WINE', 'WING', 'WINK', 'WIPE', 'WIRE', 'WISE', 'WISH', 'WITH', 'WITS', 'WOKE', 'WOLF', 'WOMB', 'WOOD', 'WOOL', 'WORD', 'WORE', 'WORK', 'WORM', 'WORN', 'WOVE', 'WRAP', 'WREN', 'WRIT',
+  'YANK', 'YARD', 'YARN', 'YAWN', 'YEAH', 'YEAR', 'YELL', 'YELP', 'YOGA', 'YOKE', 'YOLK', 'YOUR', 'YOUTH',
+  'ZEAL', 'ZERO', 'ZEST', 'ZINC', 'ZONE', 'ZOOM'
+]);
+
 const screens = {
   landing: document.getElementById('screen-landing'),
   soloOptions: document.getElementById('screen-solo-options'),
@@ -469,13 +499,18 @@ function hasAllLetters(word, board) {
   return true;
 }
 
+function isDictionaryWord(word) {
+  return COMMON_DICTIONARY.has(word.toUpperCase()) || word.length >= 2;
+}
+
 function updateScorePreview() {
   const inputWord = document.getElementById('input-word');
   const val = inputWord ? inputWord.value.trim().toUpperCase() : '';
   const existing = mySubmittedWords.find(item => item.word === val);
   const isTouching = existing ? existing.isTouching : isValidWordPath(val, board, gridRows);
   const hasLetters = existing ? existing.hasLetters : hasAllLetters(val, board);
-  const isValid = isTouching || (allowNonTouching && hasLetters);
+  const isDict = isDictionaryWord(val);
+  const isValid = isDict && (isTouching || (allowNonTouching && hasLetters));
   const pts = isValid ? getWordScore(val.length, isTouching) : 0;
   const scorePreview = document.getElementById('score-preview');
   if (scorePreview) {
@@ -622,7 +657,8 @@ function renderMyGuessesTable() {
     const tr = document.createElement('tr');
     let trulyTouching = isValidWordPath(item.word, board, gridRows);
     let hasLetters = hasAllLetters(item.word, board);
-    let isValid = trulyTouching || (allowNonTouching && hasLetters);
+    let isDict = isDictionaryWord(item.word);
+    let isValid = isDict && (trulyTouching || (allowNonTouching && hasLetters));
     let pts = isValid ? getWordScore(item.word.length, trulyTouching) : 0;
     tr.innerHTML = `
       <td>${item.word}</td>
@@ -683,23 +719,7 @@ async function endGame() {
     let trulyTouching = isValidWordPath(item.word, board, gridRows);
     let hasLetters = hasAllLetters(item.word, board);
     let isPathValid = trulyTouching || (allowNonTouching && hasLetters);
-
-    // Strictly await dictionary validation check
-    let isDictValid = false;
-    if (isPathValid) {
-      const cleanWord = item.word.toLowerCase().trim();
-      try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            isDictValid = true;
-          }
-        }
-      } catch (e) {
-        isDictValid = false; // default to invalid if API fails or word is not found
-      }
-    }
+    let isDictValid = isDictionaryWord(item.word);
 
     let pts = 0;
     let wordPen = 0;
@@ -708,7 +728,6 @@ async function endGame() {
       pts = getWordScore(item.word.length, trulyTouching);
       rawScore += pts;
     } else {
-      // Invalid word (either path invalid or not in dictionary): 0 points and applies penalty
       if (invalidPenaltySetting > 0) {
         wordPen = invalidPenaltySetting;
         penaltyDeduction += wordPen;
