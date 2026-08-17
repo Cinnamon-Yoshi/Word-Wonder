@@ -26,25 +26,24 @@ let targetKickId = null;
 let showingWordDetails = false;
 let activeGameSettings = {};
 
-// Robust offline dictionary dataset covering common Boggle words to ensure 100% reliability
 const COMMON_DICTIONARY = new Set([
   'A', 'I', 'BE', 'BO', 'BY', 'DO', 'GO', 'HE', 'HI', 'IN', 'IS', 'IT', 'ME', 'MY', 'NO', 'OF', 'OH', 'ON', 'OR', 'SO', 'TO', 'UP', 'US', 'WE',
   'ACE', 'ACT', 'ADD', 'ADO', 'AGE', 'AGO', 'AID', 'AIM', 'AIR', 'ALE', 'ALL', 'AND', 'ANT', 'ANY', 'APE', 'APT', 'ARC', 'ARE', 'ARK', 'ARM', 'ART', 'ASH', 'ASK', 'ATE', 'AWE', 'AXE',
   'BABY', 'BACK', 'BALL', 'BAND', 'BANK', 'BASE', 'BATH', 'BEAR', 'BEAT', 'BELL', 'BELT', 'BEND', 'BENT', 'BEST', 'BIRD', 'BITE', 'BLOW', 'BLUE', 'BOAT', 'BODY', 'BONE', 'BOOK', 'BOOM', 'BOOP', 'BOOR', 'BOOT', 'BOO', 'BOI', 'BOUT', 'BOWL', 'BOP', 'BURN', 'BUSH', 'BUSY', 'BYTE',
   'CALL', 'CALM', 'CAMP', 'CARD', 'CARE', 'CASH', 'CAST', 'CAVE', 'CELL', 'CHAT', 'CHIP', 'CLAP', 'CLAW', 'CLAY', 'CLIP', 'CLUB', 'CLOT', 'COAL', 'COAT', 'CODE', 'COIN', 'COLD', 'COME', 'COOK', 'COOL', 'COPE', 'COPY', 'CORD', 'CORE', 'CORK', 'CORN', 'COST', 'CREW', 'CROP', 'CUP', 'CUTE',
-  'DAMP', 'DARK', 'DART', 'DASH', 'DATE', 'DAWN', 'DAYS', 'DEAD', 'DEAL', 'DEAN', 'DEAR', DEEP, 'DEER', 'DESK', 'DIAL', 'DICE', 'DIET', 'DIME', 'DIRT', 'DISH', 'DISK', 'DOCK', 'DOES', 'DONE', 'DOOR', 'DOSE', 'DOTS', 'DOVE', 'DOWN', 'DRAG', 'DRAW', 'DREW', 'DROP', 'DUCK', 'DUST', 'DUTY',
+  'DAMP', 'DARK', 'DART', 'DASH', 'DATE', 'DAWN', 'DAYS', 'DEAD', 'DEAL', 'DEAN', 'DEAR', 'DEEP', 'DEER', 'DESK', 'DIAL', 'DICE', 'DIET', 'DIME', 'DIRT', 'DISH', 'DISK', 'DOCK', 'DOES', 'DONE', 'DOOR', 'DOSE', 'DOTS', 'DOVE', 'DOWN', 'DRAG', 'DRAW', 'DREW', 'DROP', 'DUCK', 'DUST', 'DUTY',
   'EACH', 'EARN', 'EASE', 'EAST', 'EASY', 'ECHO', 'EDGE', 'EDIT', 'ELSE', 'ENVY', 'EPIC', 'EVEN', 'EVER', 'EVIL', 'EXAM', 'EXIT', 'EYES',
   'FACE', 'FACT', 'FAIR', 'FALL', 'FAME', 'FARM', 'FAST', 'FATE', 'FAWN', 'FEAR', 'FEAT', 'FEED', 'FEEL', 'FEET', 'FELL', 'FELT', 'FILE', 'FILL', 'FILM', 'FIND', 'FINE', 'FIRE', 'FIRM', 'FISH', 'FIVE', 'FLAT', 'FLOW', 'FOAM', 'FOLD', 'FOLK', 'FOOD', 'FOOL', 'FOOT', 'FORD', 'FORK', 'FORM', 'FORT', 'FOUR', 'FREE', 'FROG', 'FROM', 'FUEL', 'FULL', 'FUND', 'FURY', 'FUSE', 'FUSS',
-  'GAIN', 'GAME', 'GANG', 'GATE', 'GAVE', 'GEAR', 'GEMS', 'GENE', 'GIFT', 'GIRL', 'GIVE', 'GLAD', 'GLOW', 'GOAL', 'GOATs', 'GOLD', 'GOLF', 'GONE', 'GOOD', 'GOWN', 'GRAB', 'GRAY', 'GREW', 'GRID', 'GROW', 'GULF', 'GULL', 'GUSH', 'GUST',
+  'GAIN', 'GAME', 'GANG', 'GATE', 'GAVE', 'GEAR', 'GEMS', 'GENE', 'GIFT', 'GIRL', 'GIVE', 'GLAD', 'GLOW', 'GOAL', 'GOAT', 'GOLD', 'GOLF', 'GONE', 'GOOD', 'GOWN', 'GRAB', 'GRAY', 'GREW', 'GRID', 'GROW', 'GULF', 'GULL', 'GUSH', 'GUST',
   'HAIR', 'HALF', 'HALL', 'HALT', 'HAND', 'HANG', 'HARD', 'HARM', 'HART', 'HASH', 'HATE', 'HAVE', 'HAWK', 'HEAD', 'HEAL', 'HEAR', 'HEAT', 'HELP', 'HERB', 'HERD', 'HERE', 'HERO', 'HIGH', 'HIRE', 'HOLD', 'HOLE', 'HOLY', 'HOME', 'HOPE', 'HORN', 'HOSE', 'HOST', 'HOUR', 'HUGE', 'HULL', 'HUNT', 'HURT',
   'ICON', 'IDEA', 'IDLE', 'INCH', 'INFO', 'INTO', 'IRON', 'ITEM',
   'JACK', 'JAIL', 'JAZZ', 'JEAN', 'JEEP', 'JELL', 'JEST', 'JOIN', 'JOKE', 'JUMP', 'JURY', 'JUST',
   'KEEN', 'KEEP', 'KEPT', 'KICK', 'KILL', 'KIND', 'KING', 'KISS', 'KITE', 'KNEE', 'KNEW', 'KNOB', 'KNOT', 'KNOW',
-  'LACE', 'LACK', 'LADY', 'LAID', 'LAKE', 'LAMB', 'LAMP', 'LAND', 'LANE', 'LARK', 'LASH', 'LASS', 'LAST', 'LATE', 'LATH', 'LAVA', 'LAWN', 'LAZY', 'LEAD', 'LEAF', 'LEAK', 'LEAN', 'LEAR', 'LEAS', 'LEAT', 'LEDG', 'LEFT', 'LEND', 'LENS', 'LESS', 'LEST', 'LIAR', 'LICE', 'LICK', 'LIFE', 'LIFT', 'LIKE', 'LILY', 'LIMP', 'LINE', 'LINK', 'LION', 'LISP', 'LIST', 'LIVE', 'LOAD', 'LOAF', 'LOAN', 'LOCK', 'LOFT', 'LOGO', 'LONE', 'LONG', 'LOOK', 'LOOP', 'LORD', 'LOSE', 'LOSS', 'LOST', 'LOUD', 'LOVE', 'LUCK', 'LUMP', 'LUNG', 'LUSH', 'JUST',
+  'LACE', 'LACK', 'LADY', 'LAID', 'LAKE', 'LAMB', 'LAMP', 'LAND', 'LANE', 'LARK', 'LASH', 'LASS', 'LAST', 'LATE', 'LATH', 'LAVA', 'LAWN', 'LAZY', 'LEAD', 'LEAF', 'LEAK', 'LEAN', 'LEAR', 'LEAS', 'LEAT', 'LEDG', 'LEFT', 'LEND', 'LENS', 'LESS', 'LEST', 'LIAR', 'LICE', 'LICK', 'LIFE', 'LIFT', 'LIKE', 'LILY', 'LIMP', 'LINE', 'LINK', 'LION', 'LISP', 'LIST', 'LIVE', 'LOAD', 'LOAF', 'LOAN', 'LOCK', 'LOFT', 'LOGO', 'LONE', 'LONG', 'LOOK', 'LOOP', 'LORD', 'LOSE', 'LOSS', 'LOST', 'LOUD', 'LOVE', 'LUCK', 'LUMP', 'LUNG', 'LUSH',
   'MADE', 'MAIL', 'MAIN', 'MAKE', 'MALE', 'MALL', 'MALT', 'MANE', 'MANY', 'MAPS', 'MARK', 'MARS', 'MASH', 'MASK', 'MASS', 'MATE', 'MATH', 'MAZE', 'MEAL', 'MEAN', 'MEAT', 'MEET', 'MELT', 'MEMO', 'MEND', 'MENU', 'MERE', 'MESA', 'MESH', 'MESS', 'MICE', 'MILD', 'MILE', 'MILK', 'MILL', 'MIND', 'MINE', 'MINT', 'MIST', 'MOAN', 'MOAT', 'MOCK', 'MODE', 'MOLD', 'MOLE', 'MOOD', 'MOON', 'MOOR', 'MORE', 'MOSS', 'MOST', 'MOTH', 'MOVE', 'MUCH', 'MULE', 'MULL', 'MUM', 'MUSE', 'MUSH', 'MUST', 'MUTT', 'MYTH',
   'NAIL', 'NAME', 'NANO', 'NARK', 'NAVY', 'NEAR', 'NEAT', 'NECK', 'NEED', 'NEST', 'NEWS', 'NEXT', 'NICE', 'NINE', 'NODE', 'NONE', 'NOON', 'NORM', 'NOSE', 'NOTE', 'NOUN', 'NUDE', 'NULL', 'NUMB',
   'OATH', 'OATS', 'OBEY', 'ODDS', 'ODOR', 'OFEN', 'OILS', 'OKAY', 'ONCE', 'ONLY', 'ONTO', 'OPEN', 'OPAL', 'ORAL', 'ORBS', 'OVAL', 'OVEN', 'OVER', 'OWED', 'OWLS', 'OWNED',
-  'PACE', 'PACK', 'PAGE', 'PAID', 'PAIL', 'PAIN', 'PAIR', 'PALE', 'PALM', 'PANE', 'PANG', 'PANT', 'PARK', 'PART', 'PASS', 'PAST', 'PATH', 'PAVE', 'PAWN', 'PEAK', 'PEAL', 'PEAR', 'PEAT', 'PECK', 'PEEL', 'PEER', 'PELT', 'PEMP', 'PEND', 'PENN', 'PENT', 'PERK', 'PEST', 'PETS', 'PICK', 'PIER', 'PILE', 'PILL', 'PINE', 'PING', 'PINK', 'PINT', 'PIPE', 'PITH', 'PITS', 'PLAN', 'PLAY', 'PLEA', 'PLOT', 'PLUG', 'PLUM', 'PLUS', 'POEM', 'POET', 'POLE', 'POLL', 'POND', 'PONY', 'POOL', 'POOR', 'POOP', 'POPS', 'PORE', 'PORK', 'PORT', 'POSE', 'POST', 'POUR', 'PRAY', 'PREP', 'PREY', 'PROD', 'PROP', 'PULLp', 'PUMP', 'PUNK', 'PUPP', 'PURE', 'PUSH', 'PUTS',
+  'PACE', 'PACK', 'PAGE', 'PAID', 'PAIL', 'PAIN', 'PAIR', 'PALE', 'PALM', 'PANE', 'PANG', 'PANT', 'PARK', 'PART', 'PASS', 'PAST', 'PATH', 'PAVE', 'PAWN', 'PEAK', 'PEAL', 'PEAR', 'PEAT', 'PECK', 'PEEL', 'PEER', 'PELT', 'PEMP', 'PEND', 'PENN', 'PENT', 'PERK', 'PEST', 'PETS', 'PICK', 'PIER', 'PILE', 'PILL', 'PINE', 'PING', 'PINK', 'PINT', 'PIPE', 'PITH', 'PITS', 'PLAN', 'PLAY', 'PLEA', 'PLOT', 'PLUG', 'PLUM', 'PLUS', 'POEM', 'POET', 'POLE', 'POLL', 'POND', 'PONY', 'POOL', 'POOR', 'POOP', 'POPS', 'PORE', 'PORK', 'PORT', 'POSE', 'POST', 'POUR', 'PRAY', 'PREP', 'PREY', 'PROD', 'PROP', 'PULL', 'PUMP', 'PUNK', 'PUPP', 'PURE', 'PUSH', 'PUTS',
   'QUAY', 'QUID', 'QUIN', 'QUIT', 'QUIZ',
   'RACE', 'RACK', 'RAFT', 'RAGE', 'RAID', 'RAIL', 'RAIN', 'RAKE', 'RAMP', 'RANG', 'RANK', 'RANT', 'RAPE', 'RAPT', 'RARE', 'RASH', 'RATE', 'RATH', 'RAVE', 'READ', 'REAL', 'REAM', 'REAP', 'REAR', 'REED', 'REEF', 'REEK', 'REEL', 'RENT', 'REST', 'RICE', 'RICH', 'RICK', 'RIDE', 'RIFE', 'RIFT', 'RING', 'RIPE', 'RISE', 'RISK', 'RITE', 'ROAD', 'ROAM', 'ROAR', 'ROBE', 'ROCK', 'RODE', 'ROLE', 'ROLL', 'ROOF', 'ROOM', 'ROOT', 'ROPE', 'ROSE', 'ROUT', 'ROWE', 'RUBE', 'RUIN', 'RULE', 'RUNG', 'RUSH', 'RUST',
   'SACK', 'SAFE', 'SAGE', 'SAID', 'SAIL', 'SAKE', 'SALE', 'SALT', 'SAME', 'SAND', 'SANE', 'SANG', 'SANK', 'SASH', 'SAVE', 'SEAL', 'SEAM', 'SEAR', 'SEAT', 'SEED', 'SEEK', 'SEEM', 'SEEN', 'SELF', 'SELL', 'SEND', 'SENT', 'SERF', 'SEWN', 'SHAD', 'SHAG', 'SHAH', 'SHAM', 'SHED', 'SHEN', 'SHES', 'SHIM', 'SHIN', 'SHIP', 'SHOE', 'SHOP', 'SHOT', 'SHOW', 'SHUN', 'SHUT', 'SICK', 'SIDE', 'SIFT', 'SIGH', 'SILK', 'SILL', 'SILO', 'SILT', 'SINE', 'SING', 'SINK', 'SIRE', 'SITE', 'SITS', 'SIT', 'SIZE', 'SKID', 'SKIN', 'SKIP', 'SKIT', 'SLAB', 'SLAM', 'SLAP', 'SLAT', 'SLAY', 'SLED', 'SLEW', 'SLID', 'SLIM', 'SLIP', 'SLIT', 'SLOT', 'SLOW', 'SLUG', 'SLUM', 'SLUR', 'SMOG', 'SMUG', 'SNAP', 'SNOW', 'SOAK', 'SOAP', 'SOAR', 'SOCK', 'SODA', 'SOFA', 'SOFT', 'SOIL', 'SOLD', 'SOLE', 'SOLO', 'SOME', 'SONG', 'SOON', 'SORE', 'SORT', 'SOUL', 'SOUP', 'SOUR', 'SPAM', 'SPAN', 'SPAR', 'SPAS', 'SPAT', 'SPEC', 'SPED', 'SPIN', 'SPIT', 'SPOT', 'SPUN', 'SPUR', 'STAB', 'STAG', 'STAR', 'STAT', 'STAY', 'STEM', 'STEP', 'STEW', 'STIR', 'STOP', 'STOW', 'STUB', 'STUD', 'STUN', 'SUCH', 'SUCK', 'SUIT', 'SULL', 'SUMS', 'SUNG', 'SUNK', 'SURE', 'SURF', 'SWAN', 'SWAP', 'SWAT', 'SWAY', 'SWIM', 'SWUM',
@@ -101,8 +100,6 @@ function showScreen(name) {
 window.addEventListener('DOMContentLoaded', () => {
   const themeSelect = document.getElementById('select-theme');
   if (themeSelect) {
-    currentTheme = themeSelect.value;
-    applyTheme(currentTheme);
     themeSelect.onchange = (e) => {
       currentTheme = e.target.value;
       applyTheme(currentTheme);
@@ -781,7 +778,7 @@ function renderSoloResults(player) {
   const toggleDetails = document.getElementById('btn-toggle-word-details');
   if (toggleDetails) {
     toggleDetails.classList.remove('hidden');
-    toggleDetails.innerText = 'View Detailed Word Breakdown';
+    toggleDetails.innerText = 'View Word Breakdown';
   }
   
   renderGameRulesBanner(activeGameSettings);
@@ -800,7 +797,7 @@ function renderLeaderboard(players, settings) {
   const toggleDetails = document.getElementById('btn-toggle-word-details');
   if (toggleDetails) {
     toggleDetails.classList.remove('hidden');
-    toggleDetails.innerText = 'View Detailed Word Breakdown';
+    toggleDetails.innerText = 'View Word Breakdown';
   }
 
   const uniquePlayersMap = new Map();
@@ -822,7 +819,7 @@ function renderLeaderboardScreen(players, settings) {
   const toggleDetails = document.getElementById('btn-toggle-word-details');
   if (toggleDetails) {
     toggleDetails.classList.remove('hidden');
-    toggleDetails.innerText = 'View Detailed Word Breakdown';
+    toggleDetails.innerText = 'View Word Breakdown';
   }
 
   const uniquePlayersMap = new Map();
@@ -899,7 +896,7 @@ if (btnToggleDetails) {
       if (resultsTitle) resultsTitle.innerText = 'Word Breakdown';
       renderWordBreakdownView();
     } else {
-      if (toggleBtn) toggleBtn.innerText = 'View Detailed Word Breakdown';
+      if (toggleBtn) toggleBtn.innerText = 'View Word Breakdown';
       if (resultsTitle) resultsTitle.innerText = 'Leaderboard';
       renderLeaderboardView();
     }
