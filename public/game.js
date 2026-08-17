@@ -451,15 +451,37 @@ function getWordScore(len, isTouching) {
   return isTouching ? base : Math.floor(base / 2);
 }
 
+// Strict letter existence check on the board for non-touching mode
+function hasAllLetters(word, board) {
+  let boardLetters = [...board];
+  for (let char of word.toUpperCase()) {
+    let idx = boardLetters.indexOf(char);
+    if (idx !== -1) {
+      boardLetters.splice(idx, 1);
+    } else {
+      // Check for QU
+      let quIdx = boardLetters.indexOf('QU');
+      if (char === 'Q' && quIdx !== -1) {
+        boardLetters.splice(quIdx, 1);
+      } else {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 function updateScorePreview() {
   const inputWord = document.getElementById('input-word');
-  const val = inputWord ? inputWord.value.trim() : '';
-  const existing = mySubmittedWords.find(item => item.word === val.toUpperCase());
+  const val = inputWord ? inputWord.value.trim().toUpperCase() : '';
+  const existing = mySubmittedWords.find(item => item.word === val);
   const isTouching = existing ? existing.isTouching : isValidWordPath(val, board, gridRows);
-  const pts = getWordScore(val.length, isTouching);
+  const hasLetters = existing ? existing.hasLetters : hasAllLetters(val, board);
+  const isValid = isTouching || (allowNonTouching && hasLetters);
+  const pts = isValid ? getWordScore(val.length, isTouching) : 0;
   const scorePreview = document.getElementById('score-preview');
   if (scorePreview) {
-    scorePreview.innerText = `Score Preview: ${pts} pts (${val.length} letters)${!isTouching ? ' [Non-touching]' : ''}`;
+    scorePreview.innerText = `Score Preview: ${pts} pts (${val.length} letters)${!isValid ? ' [Invalid]' : !isTouching ? ' [Non-touching]' : ''}`;
   }
 }
 
@@ -521,6 +543,7 @@ function submitWord(isFromTileTap) {
   }
 
   const trulyTouching = isValidWordPath(word, board, gridRows);
+  const hasLetters = hasAllLetters(word, board);
 
   if (!trulyTouching && !allowNonTouching) {
     triggerFlash('Non-touching word');
@@ -531,7 +554,16 @@ function submitWord(isFromTileTap) {
     return;
   }
 
-  mySubmittedWords.unshift({ word, isTouching: trulyTouching });
+  if (allowNonTouching && !trulyTouching && !hasLetters) {
+    triggerFlash('Invalid letters');
+    input.value = '';
+    updateScorePreview();
+    document.querySelectorAll('.die.selected').forEach(d => d.classList.remove('selected'));
+    selectedDieIndices = [];
+    return;
+  }
+
+  mySubmittedWords.unshift({ word, isTouching: trulyTouching, hasLetters });
   renderMyGuessesTable();
 
   input.value = '';
@@ -590,10 +622,13 @@ function renderMyGuessesTable() {
   tbody.innerHTML = '';
   mySubmittedWords.forEach(item => {
     const tr = document.createElement('tr');
-    let pts = getWordScore(item.word.length, item.isTouching);
+    let trulyTouching = isValidWordPath(item.word, board, gridRows);
+    let hasLetters = hasAllLetters(item.word, board);
+    let isValid = trulyTouching || (allowNonTouching && hasLetters);
+    let pts = isValid ? getWordScore(item.word.length, trulyTouching) : 0;
     tr.innerHTML = `
       <td>${item.word}</td>
-      <td style="text-align:center; color:${item.isTouching ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${item.isTouching ? '✓' : '✗'}</td>
+      <td style="text-align:center; color:${trulyTouching ? 'var(--success)' : isValid ? 'var(--warning)' : 'var(--danger)'}; font-weight:bold;">${trulyTouching ? '✓' : isValid ? '~' : '✗'}</td>
       <td style="text-align:center;">${pts}</td>
       <td class="delete-x">✕</td>
     `;
@@ -648,7 +683,8 @@ async function endGame() {
 
   for (const item of mySubmittedWords) {
     let trulyTouching = isValidWordPath(item.word, board, gridRows);
-    let isActuallyValid = trulyTouching || allowNonTouching;
+    let hasLetters = hasAllLetters(item.word, board);
+    let isActuallyValid = trulyTouching || (allowNonTouching && hasLetters);
     
     let pts = 0;
     let wordPen = 0;
@@ -666,7 +702,8 @@ async function endGame() {
     validatedWords.push({ 
       word: item.word, 
       pts, 
-      isTouching: trulyTouching, 
+      isTouching: trulyTouching,
+      isValid: isActuallyValid,
       penalty: wordPen 
     });
   }
@@ -764,7 +801,7 @@ function renderLeaderboardScreen(players, settings) {
 function renderLeaderboardView() {
   const container = document.getElementById('results-container');
   const legend = document.getElementById('results-legend');
-  if (legend) legend.classList.add('hidden'); // Hide legend on leaderboard view
+  if (legend) legend.classList.add('hidden');
   if (!container) return;
   container.innerHTML = '';
 
@@ -783,7 +820,7 @@ function renderLeaderboardView() {
 function renderWordBreakdownView() {
   const container = document.getElementById('results-container');
   const legend = document.getElementById('results-legend');
-  if (legend) legend.classList.remove('hidden'); // Show legend on word breakdown view
+  if (legend) legend.classList.remove('hidden');
   if (!container) return;
   container.innerHTML = '';
 
@@ -803,7 +840,8 @@ function renderWordBreakdownView() {
     let sortedWords = [...p.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
     let wordsHtml = sortedWords.map(w => {
       const isDup = wordCounts[w.word] > 1;
-      const borderCol = w.isTouching ? '#0369a1' : 'var(--danger)';
+      const isNonTouching = !w.isTouching && w.isValid;
+      const borderCol = isNonTouching ? 'var(--danger)' : '#0369a1';
       const dupClass = isDup ? 'duplicate-highlight' : '';
       return `<span onclick="showDefinition('${w.word}')" class="${dupClass}" style="display:inline-block; background:#0c4a6e; border:2px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts})${w.penalty > 0 ? ` <span style="color:var(--danger);">-${w.penalty}p</span>` : ''}</span>`;
     }).join(' ');

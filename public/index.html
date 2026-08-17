@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Build Version: v1.6.2 -->
+<!-- Build Version: v1.6.3 -->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Word Wonder v1.6.2</title>
+  <title>Word Wonder v1.6.3</title>
   
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232e1065'/><text x='50' y='72' font-size='70' font-weight='900' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif'>W</text></svg>">
   <link rel="stylesheet" href="style.css">
@@ -23,7 +23,7 @@
         <svg style="width: 3.3rem; height: 3.3rem; vertical-align: middle; display: inline-block;" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#2e1065"/><text x="50" y="72" font-size="70" font-weight="900" text-anchor="middle" fill="#38bdf8" font-family="sans-serif">W</text></svg>ONDER
       </h1>
       <div id="header-timer" class="timer-display hidden">03:00</div>
-      <span class="version-tag" id="app-version">v1.6.2</span>
+      <span class="version-tag" id="app-version">v1.6.3</span>
     </div>
   </div>
 
@@ -185,10 +185,10 @@
     <div id="screen-results" class="card hidden">
       <div id="results-rules-banner" style="font-size: 0.8rem; color: var(--accent); background: #082f49; padding: 8px; border-radius: 6px; border: 1px solid #0369a1; text-align: left; margin-bottom: 4px;"></div>
       
-      <!-- Legend Box -->
-      <div id="results-legend" style="font-size: 0.75rem; color: var(--text); background: #082f49; padding: 6px 10px; border-radius: 6px; border: 1px solid #0369a1; display: flex; justify-content: space-around; align-items: center; margin-bottom: 4px;">
-        <span style="display: flex; align-items: center; gap: 4px;"><span style="display:inline-block; width:12px; height:12px; background:rgba(250, 204, 21, 0.4); border:2px solid var(--warning); border-radius:2px;"></span> Duplicate Word</span>
-        <span style="display: flex; align-items: center; gap: 4px;"><span style="display:inline-block; width:12px; height:12px; background:#0c4a6e; border:2px solid var(--danger); border-radius:2px;"></span> Non-Touching Tiles</span>
+      <!-- Legend Box with labels inside outlined boxes -->
+      <div id="results-legend" style="font-size: 0.75rem; color: var(--text); background: #082f49; padding: 8px; border-radius: 6px; border: 1px solid #0369a1; display: flex; justify-content: space-around; align-items: center; margin-bottom: 4px;">
+        <span class="duplicate-highlight" style="padding: 3px 8px; border-radius: 4px; font-weight: bold;">Duplicate Word</span>
+        <span style="display:inline-block; border:2px solid var(--danger); padding:3px 8px; border-radius:4px; font-weight:bold;">Non-Touching Tiles (1/2 pts)</span>
       </div>
 
       <h2 id="results-title" style="text-align:center; font-size:1.2rem; color:var(--accent);">Leaderboard</h2>
@@ -217,7 +217,7 @@
       <p id="kick-player-name" style="text-align: center; color: var(--accent); font-weight: bold; margin: 8px 0;"></p>
       <div style="display: flex; gap: 8px; margin-top: 8px;">
         <button id="btn-kick-cancel" style="background: #0369a1; color: var(--text);">Cancel</button>
-        <button id="btn-kick-confirm" style="background: var(--danger); color: white;">Remove</button>
+        <button id="btn-kick-confirm" style="background: #0369a1; color: white;">Remove</button>
       </div>
     </div>
   </div>
