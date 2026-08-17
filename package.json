@@ -1,6 +1,6 @@
 {
   "name": "word-wonder",
-  "version": "1.6.3",
+  "version": "1.6.5",
   "description": "Multiplayer Boggle-style Word Wonder game",
   "main": "server.js",
   "dependencies": {

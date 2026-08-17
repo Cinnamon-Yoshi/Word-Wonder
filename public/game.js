@@ -451,7 +451,6 @@ function getWordScore(len, isTouching) {
   return isTouching ? base : Math.floor(base / 2);
 }
 
-// Strict letter existence check on the board for non-touching mode
 function hasAllLetters(word, board) {
   let boardLetters = [...board];
   for (let char of word.toUpperCase()) {
@@ -459,7 +458,6 @@ function hasAllLetters(word, board) {
     if (idx !== -1) {
       boardLetters.splice(idx, 1);
     } else {
-      // Check for QU
       let quIdx = boardLetters.indexOf('QU');
       if (char === 'Q' && quIdx !== -1) {
         boardLetters.splice(quIdx, 1);
@@ -684,12 +682,26 @@ async function endGame() {
   for (const item of mySubmittedWords) {
     let trulyTouching = isValidWordPath(item.word, board, gridRows);
     let hasLetters = hasAllLetters(item.word, board);
-    let isActuallyValid = trulyTouching || (allowNonTouching && hasLetters);
-    
+    let isPathValid = trulyTouching || (allowNonTouching && hasLetters);
+
+    // Dictionary check via API endpoint
+    let isDictValid = false;
+    if (isPathValid) {
+      const cleanWord = item.word.toLowerCase().trim();
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`);
+        if (res.ok) {
+          isDictValid = true;
+        }
+      } catch (e) {
+        isDictValid = true; // fallback if network fails
+      }
+    }
+
     let pts = 0;
     let wordPen = 0;
 
-    if (isActuallyValid) {
+    if (isPathValid && isDictValid) {
       pts = getWordScore(item.word.length, trulyTouching);
       rawScore += pts;
     } else {
@@ -703,7 +715,7 @@ async function endGame() {
       word: item.word, 
       pts, 
       isTouching: trulyTouching,
-      isValid: isActuallyValid,
+      isValid: (isPathValid && isDictValid),
       penalty: wordPen 
     });
   }
