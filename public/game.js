@@ -763,6 +763,8 @@ function renderLeaderboardScreen(players, settings) {
 
 function renderLeaderboardView() {
   const container = document.getElementById('results-container');
+  const legend = document.getElementById('results-legend');
+  if (legend) legend.classList.add('hidden'); // Hide legend on leaderboard view
   if (!container) return;
   container.innerHTML = '';
 
@@ -780,6 +782,8 @@ function renderLeaderboardView() {
 
 function renderWordBreakdownView() {
   const container = document.getElementById('results-container');
+  const legend = document.getElementById('results-legend');
+  if (legend) legend.classList.remove('hidden'); // Show legend on word breakdown view
   if (!container) return;
   container.innerHTML = '';
 
@@ -801,7 +805,7 @@ function renderWordBreakdownView() {
       const isDup = wordCounts[w.word] > 1;
       const borderCol = w.isTouching ? '#0369a1' : 'var(--danger)';
       const dupClass = isDup ? 'duplicate-highlight' : '';
-      return `<span onclick="showDefinition('${w.word}')" class="${dupClass}" style="display:inline-block; background:#0c4a6e; border:2px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts}) ${!w.isTouching ? '<span style="color:var(--danger); font-weight:bold;">✗</span>' : ''}${w.penalty > 0 ? ` <span style="color:var(--danger);">-${w.penalty}p</span>` : ''}</span>`;
+      return `<span onclick="showDefinition('${w.word}')" class="${dupClass}" style="display:inline-block; background:#0c4a6e; border:2px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts})${w.penalty > 0 ? ` <span style="color:var(--danger);">-${w.penalty}p</span>` : ''}</span>`;
     }).join(' ');
 
     let penText = p.penaltyDeduction > 0 ? ` (Penalties: -${p.penaltyDeduction})` : '';
