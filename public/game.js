@@ -13,7 +13,7 @@ let playerName = '';
 let currentTheme = 'ocean';
 let board = [];
 let gridRows = 4;
-let timeLeft = 180;
+let serverGameEndTime = null;
 let timerInterval = null;
 let selectedDieIndices = [];
 let mySubmittedWords = [];
@@ -140,7 +140,9 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       gridRows = parseInt(gSize);
-      timeLeft = parseInt(tDur);
+      const durationSec = parseInt(tDur);
+      serverGameEndTime = Date.now() + (durationSec * 1000);
+
       allowNonTouching = (wRule === 'true');
       invalidPenaltySetting = parseInt(pSetting);
 
@@ -162,7 +164,7 @@ window.addEventListener('DOMContentLoaded', () => {
       renderBoard(board, gridRows);
       renderMyGuessesTable();
       updateScorePreview();
-      startTimer();
+      startCentralizedTimer();
     };
   }
 });
@@ -358,7 +360,6 @@ if (btnStartMultiGame) {
   };
 }
 
-// Fixed Countdown sequence with permanent fixed slot positions (no shifting)
 socket.on('run-countdown', (settings) => {
   activeGameSettings = settings;
   if (settings && settings.invalidPenalty) {
@@ -384,7 +385,6 @@ socket.on('run-countdown', (settings) => {
   const boardEl = document.getElementById('countdown-board');
   if (boardEl) {
     boardEl.innerHTML = '';
-    // Pre-render all 20 slots statically so positions never shift or jump
     for (let r = 0; r < rowsData.length; r++) {
       for (let c = 0; c < rowsData[r].length; c++) {
         const tile = document.createElement('div');
@@ -420,7 +420,7 @@ socket.on('run-countdown', (settings) => {
 socket.on('start-game-play', (data) => {
   board = data.board;
   gridRows = parseInt(data.settings.gridSize);
-  timeLeft = parseInt(data.settings.duration);
+  serverGameEndTime = data.gameEndTime;
   allowNonTouching = (data.settings.allowNonTouching === 'true' || data.settings.allowNonTouching === true);
   activeGameSettings = data.settings;
   if (data.settings.invalidPenalty) {
@@ -442,7 +442,7 @@ socket.on('start-game-play', (data) => {
   renderBoard(board, gridRows);
   renderMyGuessesTable();
   updateScorePreview();
-  startTimer();
+  startCentralizedTimer();
 });
 
 function getWordScore(len, isTouching) {
@@ -605,18 +605,17 @@ function renderMyGuessesTable() {
   });
 }
 
-function startTimer() {
+function startCentralizedTimer() {
   clearInterval(timerInterval);
-  let rem = timeLeft;
-  updateTimerDisplay(rem);
   timerInterval = setInterval(() => {
-    rem--;
-    updateTimerDisplay(rem);
-    if (rem <= 0) {
+    const now = Date.now();
+    const remainingSec = Math.max(0, Math.floor((serverGameEndTime - now) / 1000));
+    updateTimerDisplay(remainingSec);
+    if (remainingSec <= 0) {
       clearInterval(timerInterval);
       endGame();
     }
-  }, 1000);
+  }, 200);
 }
 
 function updateTimerDisplay(sec) {
@@ -684,7 +683,7 @@ async function endGame() {
 }
 
 socket.on('show-leaderboard', (data) => {
-  renderLeaderboard(data.players, data.settings);
+  renderLeaderboardScreen(data.players, data.settings);
 });
 
 function renderGameRulesBanner(settings) {
@@ -706,34 +705,16 @@ function renderGameRulesBanner(settings) {
 function renderSoloResults(player) {
   showScreen('results');
   const resultsTitle = document.getElementById('results-title');
-  if (resultsTitle) resultsTitle.innerText = 'Word Breakdown';
+  if (resultsTitle) resultsTitle.innerText = 'Leaderboard';
   const toggleDetails = document.getElementById('btn-toggle-word-details');
-  if (toggleDetails) toggleDetails.classList.add('hidden');
+  if (toggleDetails) {
+    toggleDetails.classList.remove('hidden');
+    toggleDetails.innerText = 'View Detailed Word Breakdown';
+  }
   
   renderGameRulesBanner(activeGameSettings);
-
-  let sortedWords = [...player.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
-
-  const container = document.getElementById('results-container');
-  if (container) {
-    let penaltyHtml = player.penaltyDeduction > 0 ? `<div style="font-size:0.85rem; color:var(--danger);">Penalty Deduction: -${player.penaltyDeduction} pts</div>` : '';
-    container.innerHTML = `
-      <div style="background:#082f49; padding:16px; border-radius:8px; display:flex; flex-direction:column; gap:12px; border: 1px solid #0369a1;">
-        <div style="display:flex; justify-content:space-between; font-weight:bold; color:var(--accent); font-size:1.1rem;">
-          <span>${player.name}: ${player.finalScore} pts</span>
-        </div>
-        ${penaltyHtml}
-        <div>
-          <div style="display:flex; flex-wrap:wrap; gap:4px;">
-            ${sortedWords.length > 0 ? sortedWords.map(w => {
-              const borderCol = w.isTouching ? '#0369a1' : 'var(--danger)';
-              return `<span onclick="showDefinition('${w.word}')" style="display:inline-block; background:#0c4a6e; border:1px solid ${borderCol}; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.85rem;">${w.word} (${w.pts}) <span style="color:${w.isTouching ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${w.isTouching ? '✓' : '✗'}</span>${w.penalty > 0 ? ` -${w.penalty}p` : ''}</span>`;
-            }).join('') : '<span style="color:var(--text-muted)">No words submitted</span>'}
-          </div>
-        </div>
-      </div>
-    `;
-  }
+  finalLeaderboardData = [player];
+  renderLeaderboardView();
 }
 
 function renderLeaderboard(players, settings) {
@@ -743,11 +724,11 @@ function renderLeaderboard(players, settings) {
   renderGameRulesBanner(activeGameSettings);
 
   const resultsTitle = document.getElementById('results-title');
-  if (resultsTitle) resultsTitle.innerText = 'Word Breakdown';
+  if (resultsTitle) resultsTitle.innerText = 'Leaderboard';
   const toggleDetails = document.getElementById('btn-toggle-word-details');
   if (toggleDetails) {
     toggleDetails.classList.remove('hidden');
-    toggleDetails.innerText = 'Back to Leaderboard';
+    toggleDetails.innerText = 'View Detailed Word Breakdown';
   }
 
   const uniquePlayersMap = new Map();
@@ -755,7 +736,46 @@ function renderLeaderboard(players, settings) {
   finalLeaderboardData = Array.from(uniquePlayersMap.values());
 
   showScreen('results');
-  renderWordBreakdownView();
+  renderLeaderboardView();
+}
+
+function renderLeaderboardScreen(players, settings) {
+  isSoloGame = false;
+  showingWordDetails = false;
+  activeGameSettings = settings || {};
+  renderGameRulesBanner(activeGameSettings);
+
+  const resultsTitle = document.getElementById('results-title');
+  if (resultsTitle) resultsTitle.innerText = 'Leaderboard';
+  const toggleDetails = document.getElementById('btn-toggle-word-details');
+  if (toggleDetails) {
+    toggleDetails.classList.remove('hidden');
+    toggleDetails.innerText = 'View Detailed Word Breakdown';
+  }
+
+  const uniquePlayersMap = new Map();
+  players.forEach(p => uniquePlayersMap.set(p.name, p));
+  finalLeaderboardData = Array.from(uniquePlayersMap.values());
+
+  showScreen('results');
+  renderLeaderboardView();
+}
+
+function renderLeaderboardView() {
+  const container = document.getElementById('results-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let sorted = [...finalLeaderboardData].sort((a, b) => b.finalScore - a.finalScore);
+  const highestScore = sorted.length > 0 ? sorted[0].finalScore : 0;
+
+  sorted.forEach((p) => {
+    const div = document.createElement('div');
+    const isWinner = (p.finalScore > 0 && p.finalScore === highestScore);
+    div.style.cssText = "background:#082f49; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; border: 1px solid #0369a1;";
+    div.innerHTML = `<span>${p.name} ${isWinner ? '🏆' : ''}</span><span>${p.finalScore} pts</span>`;
+    container.appendChild(div);
+  });
 }
 
 function renderWordBreakdownView() {
@@ -780,29 +800,13 @@ function renderWordBreakdownView() {
     let wordsHtml = sortedWords.map(w => {
       const isDup = wordCounts[w.word] > 1;
       const borderCol = w.isTouching ? '#0369a1' : 'var(--danger)';
-      return `<span onclick="showDefinition('${w.word}')" class="${isDup ? 'duplicate-highlight' : ''}" style="display:inline-block; background:#0c4a6e; border:1px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts}) <span style="color:${w.isTouching ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${w.isTouching ? '✓' : '✗'}</span>${w.penalty > 0 ? ` -${w.penalty}p` : ''}</span>`;
+      const dupClass = isDup ? 'duplicate-highlight' : '';
+      return `<span onclick="showDefinition('${w.word}')" class="${dupClass}" style="display:inline-block; background:#0c4a6e; border:2px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts}) ${!w.isTouching ? '<span style="color:var(--danger); font-weight:bold;">✗</span>' : ''}${w.penalty > 0 ? ` <span style="color:var(--danger);">-${w.penalty}p</span>` : ''}</span>`;
     }).join(' ');
 
     let penText = p.penaltyDeduction > 0 ? ` (Penalties: -${p.penaltyDeduction})` : '';
     block.innerHTML = `<div style="font-weight:bold; color:var(--accent); margin-bottom:6px; font-size:1.05rem;">${p.name}: ${p.finalScore} pts${penText}</div><div style="display:flex; flex-wrap:wrap; gap:4px;">${wordsHtml || '<span style="color:var(--text-muted)">None</span>'}</div>`;
     container.appendChild(block);
-  });
-}
-
-function renderLeaderboardView() {
-  const container = document.getElementById('results-container');
-  if (!container) return;
-  container.innerHTML = '';
-
-  let sorted = [...finalLeaderboardData].sort((a, b) => b.finalScore - a.finalScore);
-  const highestScore = sorted.length > 0 ? sorted[0].finalScore : 0;
-
-  sorted.forEach((p) => {
-    const div = document.createElement('div');
-    const isWinner = (p.finalScore > 0 && p.finalScore === highestScore);
-    div.style.cssText = "background:#082f49; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; border: 1px solid #0369a1;";
-    div.innerHTML = `<span>${p.name} ${isWinner ? '🏆' : ''}</span><span>${p.finalScore} pts</span>`;
-    container.appendChild(div);
   });
 }
 

@@ -19,7 +19,8 @@ let roomState = {
         theme: 'ocean'
     },
     gameState: 'lobby',
-    board: []
+    board: [],
+    gameEndTime: null
 };
 
 const BOGGLE_DICE_4x4 = [
@@ -131,10 +132,14 @@ io.on('connection', (socket) => {
             
             setTimeout(() => {
                 roomState.gameState = 'playing';
+                const durationSec = parseInt(roomState.settings.duration);
+                roomState.gameEndTime = Date.now() + (durationSec * 1000);
+
                 io.emit('start-game-play', {
                     board: roomState.board,
                     settings: roomState.settings,
-                    hostId: roomState.hostId
+                    hostId: roomState.hostId,
+                    gameEndTime: roomState.gameEndTime
                 });
             }, 5000);
         }
