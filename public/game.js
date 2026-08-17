@@ -24,6 +24,7 @@ let isSoloGame = false;
 let finalLeaderboardData = [];
 let targetKickId = null;
 let showingWordDetails = false;
+let activeGameSettings = {};
 
 const screens = {
   landing: document.getElementById('screen-landing'),
@@ -133,7 +134,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const wRule = document.getElementById('solo-word-rule').value;
       const pSetting = document.getElementById('solo-invalid-penalty').value;
 
-      if (!gSize || !tDur || wRule === "") {
+      if (!gSize || !tDur || wRule === "" || !pSetting) {
         alert('Please select all game options from the dropdown menus before starting.');
         return;
       }
@@ -143,11 +144,21 @@ window.addEventListener('DOMContentLoaded', () => {
       allowNonTouching = (wRule === 'true');
       invalidPenaltySetting = parseInt(pSetting);
 
+      activeGameSettings = {
+        gridSize: gSize,
+        duration: tDur,
+        allowNonTouching: wRule,
+        invalidPenalty: pSetting
+      };
+
       applyTheme(currentTheme);
       board = rollBoardLocal(gridRows);
       mySubmittedWords = [];
 
       showScreen('game');
+      const endEarlyBtn = document.getElementById('btn-end-early');
+      if (endEarlyBtn) endEarlyBtn.classList.remove('hidden');
+
       renderBoard(board, gridRows);
       renderMyGuessesTable();
       updateScorePreview();
@@ -274,6 +285,7 @@ socket.on('host-fail', () => {
 });
 
 socket.on('room-settings-updated', (settings) => {
+  activeGameSettings = settings;
   invalidPenaltySetting = parseInt(settings.invalidPenalty || '0');
 });
 
@@ -336,7 +348,7 @@ if (btnStartMultiGame) {
       const wRule = document.getElementById('host-word-rule').value;
       const pSetting = document.getElementById('host-invalid-penalty').value;
 
-      if (!gSize || !tDur || wRule === "") {
+      if (!gSize || !tDur || wRule === "" || !pSetting) {
         alert('Please select all game options from the dropdown menus before launching.');
         return;
       }
@@ -346,8 +358,9 @@ if (btnStartMultiGame) {
   };
 }
 
-// Countdown sequence matching the exact 5-column reference layout
+// Fixed Countdown sequence with permanent fixed slot positions (no shifting)
 socket.on('run-countdown', (settings) => {
+  activeGameSettings = settings;
   if (settings && settings.invalidPenalty) {
     invalidPenaltySetting = parseInt(settings.invalidPenalty);
   }
@@ -368,31 +381,40 @@ socket.on('run-countdown', (settings) => {
     ['-', 'G', 'O', '!', '-']
   ];
 
-  let step = 0;
   const boardEl = document.getElementById('countdown-board');
-  if (boardEl) boardEl.innerHTML = '';
-  
-  function renderCountdownStep() {
-    if (step < rowsData.length && boardEl) {
-      boardEl.innerHTML = '';
-      for (let r = 0; r <= step; r++) {
-        rowsData[r].forEach(char => {
-          const tile = document.createElement('div');
-          tile.className = 'die';
-          tile.style.width = '100%';
-          tile.style.aspectRatio = '1';
-          tile.style.fontSize = '1.6rem';
-          tile.innerText = char;
-          boardEl.appendChild(tile);
-        });
-      }
-      step++;
-      if (step < rowsData.length) {
-        setTimeout(renderCountdownStep, 1000);
+  if (boardEl) {
+    boardEl.innerHTML = '';
+    // Pre-render all 20 slots statically so positions never shift or jump
+    for (let r = 0; r < rowsData.length; r++) {
+      for (let c = 0; c < rowsData[r].length; c++) {
+        const tile = document.createElement('div');
+        tile.className = 'die invisible';
+        tile.id = `cd-tile-${r}-${c}`;
+        tile.style.width = '100%';
+        tile.style.aspectRatio = '1';
+        tile.style.fontSize = '1.6rem';
+        tile.innerText = rowsData[r][c];
+        boardEl.appendChild(tile);
       }
     }
   }
-  renderCountdownStep();
+
+  let step = 0;
+  function revealCountdownStep() {
+    if (step < rowsData.length && boardEl) {
+      for (let r = 0; r <= step; r++) {
+        for (let c = 0; c < rowsData[r].length; c++) {
+          const tile = document.getElementById(`cd-tile-${r}-${c}`);
+          if (tile) tile.classList.remove('invisible');
+        }
+      }
+      step++;
+      if (step < rowsData.length) {
+        setTimeout(revealCountdownStep, 1000);
+      }
+    }
+  }
+  revealCountdownStep();
 });
 
 socket.on('start-game-play', (data) => {
@@ -400,12 +422,23 @@ socket.on('start-game-play', (data) => {
   gridRows = parseInt(data.settings.gridSize);
   timeLeft = parseInt(data.settings.duration);
   allowNonTouching = (data.settings.allowNonTouching === 'true' || data.settings.allowNonTouching === true);
+  activeGameSettings = data.settings;
   if (data.settings.invalidPenalty) {
     invalidPenaltySetting = parseInt(data.settings.invalidPenalty);
   }
   mySubmittedWords = [];
 
   showScreen('game');
+  
+  const endEarlyBtn = document.getElementById('btn-end-early');
+  if (endEarlyBtn) {
+    if (isSoloGame || socket.id === data.hostId) {
+      endEarlyBtn.classList.remove('hidden');
+    } else {
+      endEarlyBtn.classList.add('hidden');
+    }
+  }
+
   renderBoard(board, gridRows);
   renderMyGuessesTable();
   updateScorePreview();
@@ -477,7 +510,6 @@ function submitWord(isFromTileTap) {
   const word = input.value.trim().toUpperCase();
   if (!word) return;
 
-  // Check for duplicate word entry
   const alreadyGuessed = mySubmittedWords.some(item => item.word === word);
   if (alreadyGuessed) {
     triggerFlash('Duplicate word');
@@ -616,18 +648,28 @@ async function endGame() {
   let validatedWords = [];
 
   for (const item of mySubmittedWords) {
-    let pts = getWordScore(item.word.length, item.isTouching);
-    rawScore += pts;
+    let trulyTouching = isValidWordPath(item.word, board, gridRows);
+    let isActuallyValid = trulyTouching || allowNonTouching;
     
-    // Calculate penalty for non-touching / invalid word path if rule applies
-    let isInvalid = !item.isTouching;
+    let pts = 0;
     let wordPen = 0;
-    if (isInvalid && invalidPenaltySetting > 0) {
-      wordPen = invalidPenaltySetting;
-      penaltyDeduction += wordPen;
+
+    if (isActuallyValid) {
+      pts = getWordScore(item.word.length, trulyTouching);
+      rawScore += pts;
+    } else {
+      if (invalidPenaltySetting > 0) {
+        wordPen = invalidPenaltySetting;
+        penaltyDeduction += wordPen;
+      }
     }
 
-    validatedWords.push({ word: item.word, pts, isTouching: item.isTouching, penalty: wordPen });
+    validatedWords.push({ 
+      word: item.word, 
+      pts, 
+      isTouching: trulyTouching, 
+      penalty: wordPen 
+    });
   }
 
   let finalScore = Math.max(0, rawScore - penaltyDeduction);
@@ -641,9 +683,25 @@ async function endGame() {
   }
 }
 
-socket.on('show-leaderboard', (players) => {
-  renderLeaderboard(players);
+socket.on('show-leaderboard', (data) => {
+  renderLeaderboard(data.players, data.settings);
 });
+
+function renderGameRulesBanner(settings) {
+  const banner = document.getElementById('results-rules-banner');
+  if (!banner) return;
+  if (!settings || !settings.gridSize) {
+    banner.classList.add('hidden');
+    return;
+  }
+  banner.classList.remove('hidden');
+  const sizeLabel = settings.gridSize === '4' ? '4x4 Standard' : settings.gridSize === '5' ? '5x5 Large' : '6x6 Jumbo';
+  const durLabel = `${parseInt(settings.duration || 180) / 60} Minute(s)`;
+  const ruleLabel = settings.allowNonTouching === 'true' || settings.allowNonTouching === true ? 'Allow Non-Touching Words' : 'Adjacent Tiles Only';
+  const penVal = settings.invalidPenalty || '0';
+  const penLabel = penVal !== '0' ? `-${penVal} Penalty/Invalid` : '0 Penalty';
+  banner.innerHTML = `<strong>Game Rules:</strong> Grid: ${sizeLabel} | Time: ${durLabel} | Rule: ${ruleLabel} | Penalty: ${penLabel}`;
+}
 
 function renderSoloResults(player) {
   showScreen('results');
@@ -652,6 +710,8 @@ function renderSoloResults(player) {
   const toggleDetails = document.getElementById('btn-toggle-word-details');
   if (toggleDetails) toggleDetails.classList.add('hidden');
   
+  renderGameRulesBanner(activeGameSettings);
+
   let sortedWords = [...player.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
 
   const container = document.getElementById('results-container');
@@ -665,7 +725,10 @@ function renderSoloResults(player) {
         ${penaltyHtml}
         <div>
           <div style="display:flex; flex-wrap:wrap; gap:4px;">
-            ${sortedWords.length > 0 ? sortedWords.map(w => `<span onclick="showDefinition('${w.word}')" style="display:inline-block; background:#0c4a6e; border:1px solid #0369a1; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.85rem;">${w.word} (${w.pts}${w.penalty > 0 ? ` -${w.penalty}p` : ''})</span>`).join('') : '<span style="color:var(--text-muted)">No words submitted</span>'}
+            ${sortedWords.length > 0 ? sortedWords.map(w => {
+              const borderCol = w.isTouching ? '#0369a1' : 'var(--danger)';
+              return `<span onclick="showDefinition('${w.word}')" style="display:inline-block; background:#0c4a6e; border:1px solid ${borderCol}; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.85rem;">${w.word} (${w.pts}) <span style="color:${w.isTouching ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${w.isTouching ? '✓' : '✗'}</span>${w.penalty > 0 ? ` -${w.penalty}p` : ''}</span>`;
+            }).join('') : '<span style="color:var(--text-muted)">No words submitted</span>'}
           </div>
         </div>
       </div>
@@ -673,9 +736,12 @@ function renderSoloResults(player) {
   }
 }
 
-function renderLeaderboard(players) {
+function renderLeaderboard(players, settings) {
   isSoloGame = false;
   showingWordDetails = false;
+  activeGameSettings = settings || {};
+  renderGameRulesBanner(activeGameSettings);
+
   const resultsTitle = document.getElementById('results-title');
   if (resultsTitle) resultsTitle.innerText = 'Word Breakdown';
   const toggleDetails = document.getElementById('btn-toggle-word-details');
@@ -692,7 +758,6 @@ function renderLeaderboard(players) {
   renderWordBreakdownView();
 }
 
-// Ordered from highest score to lowest score
 function renderWordBreakdownView() {
   const container = document.getElementById('results-container');
   if (!container) return;
@@ -714,7 +779,8 @@ function renderWordBreakdownView() {
     let sortedWords = [...p.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
     let wordsHtml = sortedWords.map(w => {
       const isDup = wordCounts[w.word] > 1;
-      return `<span onclick="showDefinition('${w.word}')" class="${isDup ? 'duplicate-highlight' : ''}" style="display:inline-block; background:#0c4a6e; border:1px solid #0369a1; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts}${w.penalty > 0 ? ` -${w.penalty}p` : ''})</span>`;
+      const borderCol = w.isTouching ? '#0369a1' : 'var(--danger)';
+      return `<span onclick="showDefinition('${w.word}')" class="${isDup ? 'duplicate-highlight' : ''}" style="display:inline-block; background:#0c4a6e; border:1px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts}) <span style="color:${w.isTouching ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${w.isTouching ? '✓' : '✗'}</span>${w.penalty > 0 ? ` -${w.penalty}p` : ''}</span>`;
     }).join(' ');
 
     let penText = p.penaltyDeduction > 0 ? ` (Penalties: -${p.penaltyDeduction})` : '';

@@ -15,7 +15,7 @@ let roomState = {
         gridSize: null,
         duration: null,
         allowNonTouching: null,
-        invalidPenalty: '0',
+        invalidPenalty: null,
         theme: 'ocean'
     },
     gameState: 'lobby',
@@ -122,7 +122,7 @@ io.on('connection', (socket) => {
 
     socket.on('start-countdown', () => {
         if (socket.id === roomState.hostId) {
-            if (!roomState.settings.gridSize || !roomState.settings.duration || roomState.settings.allowNonTouching === null) {
+            if (!roomState.settings.gridSize || !roomState.settings.duration || roomState.settings.allowNonTouching === null || roomState.settings.invalidPenalty === null) {
                 return;
             }
             roomState.gameState = 'countdown';
@@ -133,7 +133,8 @@ io.on('connection', (socket) => {
                 roomState.gameState = 'playing';
                 io.emit('start-game-play', {
                     board: roomState.board,
-                    settings: roomState.settings
+                    settings: roomState.settings,
+                    hostId: roomState.hostId
                 });
             }, 5000);
         }
@@ -154,7 +155,7 @@ io.on('connection', (socket) => {
         const allFinished = uniqueList.every(pl => pl.submittedWords.length > 0 || pl.finalScore !== undefined);
         if (allFinished || socket.id === roomState.hostId) {
             roomState.gameState = 'results';
-            io.emit('show-leaderboard', uniqueList);
+            io.emit('show-leaderboard', { players: uniqueList, settings: roomState.settings });
         }
     });
 
