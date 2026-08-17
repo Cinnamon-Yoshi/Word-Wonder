@@ -684,17 +684,20 @@ async function endGame() {
     let hasLetters = hasAllLetters(item.word, board);
     let isPathValid = trulyTouching || (allowNonTouching && hasLetters);
 
-    // Dictionary check via API endpoint
+    // Strictly await dictionary validation check
     let isDictValid = false;
     if (isPathValid) {
       const cleanWord = item.word.toLowerCase().trim();
       try {
         const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`);
         if (res.ok) {
-          isDictValid = true;
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            isDictValid = true;
+          }
         }
       } catch (e) {
-        isDictValid = true; // fallback if network fails
+        isDictValid = false; // default to invalid if API fails or word is not found
       }
     }
 
@@ -705,6 +708,7 @@ async function endGame() {
       pts = getWordScore(item.word.length, trulyTouching);
       rawScore += pts;
     } else {
+      // Invalid word (either path invalid or not in dictionary): 0 points and applies penalty
       if (invalidPenaltySetting > 0) {
         wordPen = invalidPenaltySetting;
         penaltyDeduction += wordPen;
@@ -853,7 +857,7 @@ function renderWordBreakdownView() {
     let wordsHtml = sortedWords.map(w => {
       const isDup = wordCounts[w.word] > 1;
       const isNonTouching = !w.isTouching && w.isValid;
-      const borderCol = isNonTouching ? 'var(--danger)' : '#0369a1';
+      const borderCol = (isNonTouching || !w.isValid) ? 'var(--danger)' : '#0369a1';
       const dupClass = isDup ? 'duplicate-highlight' : '';
       return `<span onclick="showDefinition('${w.word}')" class="${dupClass}" style="display:inline-block; background:#0c4a6e; border:2px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts})${w.penalty > 0 ? ` <span style="color:var(--danger);">-${w.penalty}p</span>` : ''}</span>`;
     }).join(' ');
