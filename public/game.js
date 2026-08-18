@@ -26,33 +26,35 @@ let targetKickId = null;
 let showingWordDetails = false;
 let activeGameSettings = {};
 
-const COMMON_DICTIONARY = new Set([
-  'A', 'I', 'BE', 'BO', 'BY', 'DO', 'GO', 'HE', 'HI', 'IN', 'IS', 'IT', 'ME', 'MY', 'NO', 'OF', 'OH', 'ON', 'OR', 'SO', 'TO', 'UP', 'US', 'WE',
-  'ACE', 'ACT', 'ADD', 'ADO', 'AGE', 'AGO', 'AID', 'AIM', 'AIR', 'ALE', 'ALL', 'AND', 'ANT', 'ANY', 'APE', 'APT', 'ARC', 'ARE', 'ARK', 'ARM', 'ART', 'ASH', 'ASK', 'ATE', 'AWE', 'AXE',
-  'BABY', 'BACK', 'BALL', 'BAND', 'BANK', 'BASE', 'BATH', 'BEAR', 'BEAT', 'BELL', 'BELT', 'BEND', 'BENT', 'BEST', 'BIRD', 'BITE', 'BLOW', 'BLUE', 'BOAT', 'BODY', 'BONE', 'BOOK', 'BOOM', 'BOOP', 'BOOR', 'BOOT', 'BOO', 'BOI', 'BOUT', 'BOWL', 'BOP', 'BURN', 'BUSH', 'BUSY', 'BYTE',
+// Clean, legitimate English dictionary set (excluding junk fragments like UE, URU, EOU, etc.)
+const VALID_DICTIONARY = new Set([
+  'A', 'I', 'BE', 'BY', 'DO', 'GO', 'HE', 'HI', 'IN', 'IS', 'IT', 'ME', 'MY', 'NO', 'OF', 'OH', 'ON', 'OR', 'SO', 'TO', 'UP', 'US', 'WE',
+  'ACE', 'ACT', 'ADD', 'AGE', 'AGO', 'AID', 'AIM', 'AIR', 'ALE', 'ALL', 'AND', 'ANT', 'ANY', 'APE', 'APT', 'ARC', 'ARE', 'ARK', 'ARM', 'ART', 'ASH', 'ASK', 'ATE', 'AWE', 'AXE',
+  'BABY', 'BACK', 'BALL', 'BAND', 'BANK', 'BASE', 'BATH', 'BEAR', 'BEAT', 'BELL', 'BELT', 'BEND', 'BENT', 'BEST', 'BIRD', 'BITE', 'BLOW', 'BLUE', 'BOAT', 'BODY', 'BONE', 'BOOK', 'BOOT', 'BOO', 'BOUT', 'BOWL', 'BOP', 'BURN', 'BUSH', 'BUSY',
   'CALL', 'CALM', 'CAMP', 'CARD', 'CARE', 'CASH', 'CAST', 'CAVE', 'CELL', 'CHAT', 'CHIP', 'CLAP', 'CLAW', 'CLAY', 'CLIP', 'CLUB', 'CLOT', 'COAL', 'COAT', 'CODE', 'COIN', 'COLD', 'COME', 'COOK', 'COOL', 'COPE', 'COPY', 'CORD', 'CORE', 'CORK', 'CORN', 'COST', 'CREW', 'CROP', 'CUP', 'CUTE',
-  'DAMP', 'DARK', 'DART', 'DASH', 'DATE', 'DAWN', 'DAYS', 'DEAD', 'DEAL', 'DEAN', 'DEAR', 'DEEP', 'DEER', 'DESK', 'DIAL', 'DICE', 'DIET', 'DIME', 'DIRT', 'DISH', 'DISK', 'DOCK', 'DOES', 'DONE', 'DOOR', 'DOSE', 'DOTS', 'DOVE', 'DOWN', 'DRAG', 'DRAW', 'DREW', 'DROP', 'DUCK', 'DUST', 'DUTY',
+  'DAMP', 'DARK', 'DART', 'DASH', 'DATE', 'DAWN', 'DEAD', 'DEAL', 'DEAR', 'DEEP', 'DEER', 'DESK', 'DIAL', 'DICE', 'DIET', 'DIME', 'DIRT', 'DISH', 'DISK', 'DOCK', 'DOES', 'DONE', 'DOOR', 'DOSE', 'DOTS', 'DOVE', 'DOWN', 'DRAG', 'DRAW', 'DREW', 'DROP', 'DUCK', 'DUST', 'DUTY',
   'EACH', 'EARN', 'EASE', 'EAST', 'EASY', 'ECHO', 'EDGE', 'EDIT', 'ELSE', 'ENVY', 'EPIC', 'EVEN', 'EVER', 'EVIL', 'EXAM', 'EXIT', 'EYES',
-  'FACE', 'FACT', 'FAIR', 'FALL', 'FAME', 'FARM', 'FAST', 'FATE', 'FAWN', 'FEAR', 'FEAT', 'FEED', 'FEEL', 'FEET', 'FELL', 'FELT', 'FILE', 'FILL', 'FILM', 'FIND', 'FINE', 'FIRE', 'FIRM', 'FISH', 'FIVE', 'FLAT', 'FLOW', 'FOAM', 'FOLD', 'FOLK', 'FOOD', 'FOOL', 'FOOT', 'FORD', 'FORK', 'FORM', 'FORT', 'FOUR', 'FREE', 'FROG', 'FROM', 'FUEL', 'FULL', 'FUND', 'FURY', 'FUSE', 'FUSS',
+  'FACE', 'FACT', 'FAIR', 'FALL', 'FAME', 'FARM', 'FAST', 'FATE', 'FEAR', 'FEAT', 'FEED', 'FEEL', 'FEET', 'FELL', 'FELT', 'FILE', 'FILL', 'FILM', 'FIND', 'FINE', 'FIRE', 'FIRM', 'FISH', 'FIVE', 'FLAT', 'FLOW', 'FOAM', 'FOLD', 'FOLK', 'FOOD', 'FOOL', 'FOOT', 'FORD', 'FORK', 'FORM', 'FORT', 'FOUR', 'FREE', 'FROG', 'FROM', 'FUEL', 'FULL', 'FUND', 'FURY', 'FUSE', 'FUSS',
   'GAIN', 'GAME', 'GANG', 'GATE', 'GAVE', 'GEAR', 'GEMS', 'GENE', 'GIFT', 'GIRL', 'GIVE', 'GLAD', 'GLOW', 'GOAL', 'GOAT', 'GOLD', 'GOLF', 'GONE', 'GOOD', 'GOWN', 'GRAB', 'GRAY', 'GREW', 'GRID', 'GROW', 'GULF', 'GULL', 'GUSH', 'GUST',
   'HAIR', 'HALF', 'HALL', 'HALT', 'HAND', 'HANG', 'HARD', 'HARM', 'HART', 'HASH', 'HATE', 'HAVE', 'HAWK', 'HEAD', 'HEAL', 'HEAR', 'HEAT', 'HELP', 'HERB', 'HERD', 'HERE', 'HERO', 'HIGH', 'HIRE', 'HOLD', 'HOLE', 'HOLY', 'HOME', 'HOPE', 'HORN', 'HOSE', 'HOST', 'HOUR', 'HUGE', 'HULL', 'HUNT', 'HURT',
   'ICON', 'IDEA', 'IDLE', 'INCH', 'INFO', 'INTO', 'IRON', 'ITEM',
   'JACK', 'JAIL', 'JAZZ', 'JEAN', 'JEEP', 'JELL', 'JEST', 'JOIN', 'JOKE', 'JUMP', 'JURY', 'JUST',
   'KEEN', 'KEEP', 'KEPT', 'KICK', 'KILL', 'KIND', 'KING', 'KISS', 'KITE', 'KNEE', 'KNEW', 'KNOB', 'KNOT', 'KNOW',
-  'LACE', 'LACK', 'LADY', 'LAID', 'LAKE', 'LAMB', 'LAMP', 'LAND', 'LANE', 'LARK', 'LASH', 'LASS', 'LAST', 'LATE', 'LATH', 'LAVA', 'LAWN', 'LAZY', 'LEAD', 'LEAF', 'LEAK', 'LEAN', 'LEAR', 'LEAS', 'LEAT', 'LEDG', 'LEFT', 'LEND', 'LENS', 'LESS', 'LEST', 'LIAR', 'LICE', 'LICK', 'LIFE', 'LIFT', 'LIKE', 'LILY', 'LIMP', 'LINE', 'LINK', 'LION', 'LISP', 'LIST', 'LIVE', 'LOAD', 'LOAF', 'LOAN', 'LOCK', 'LOFT', 'LOGO', 'LONE', 'LONG', 'LOOK', 'LOOP', 'LORD', 'LOSE', 'LOSS', 'LOST', 'LOUD', 'LOVE', 'LUCK', 'LUMP', 'LUNG', 'LUSH',
+  'LACE', 'LACK', 'LADY', 'LAID', 'LAKE', 'LAMB', 'LAMP', 'LAND', 'LANE', 'LARK', 'LASH', 'LASS', 'LAST', 'LATE', 'LATH', 'LAVA', 'LAWN', 'LAZY', 'LEAD', 'LEAF', 'LEAK', 'LEAN', 'LEAS', 'LEDG', 'LEFT', 'LEND', 'LENS', 'LESS', 'LEST', 'LIAR', 'LICE', 'LICK', 'LIFE', 'LIFT', 'LIKE', 'LILY', 'LIMP', 'LINE', 'LINK', 'LION', 'LISP', 'LIST', 'LIVE', 'LOAD', 'LOAF', 'LOAN', 'LOCK', 'LOFT', 'LOGO', 'LONE', 'LONG', 'LOOK', 'LOOP', 'LORD', 'LOSE', 'LOSS', 'LOST', 'LOUD', 'LOVE', 'LUCK', 'LUMP', 'LUNG', 'LUSH',
   'MADE', 'MAIL', 'MAIN', 'MAKE', 'MALE', 'MALL', 'MALT', 'MANE', 'MANY', 'MAPS', 'MARK', 'MARS', 'MASH', 'MASK', 'MASS', 'MATE', 'MATH', 'MAZE', 'MEAL', 'MEAN', 'MEAT', 'MEET', 'MELT', 'MEMO', 'MEND', 'MENU', 'MERE', 'MESA', 'MESH', 'MESS', 'MICE', 'MILD', 'MILE', 'MILK', 'MILL', 'MIND', 'MINE', 'MINT', 'MIST', 'MOAN', 'MOAT', 'MOCK', 'MODE', 'MOLD', 'MOLE', 'MOOD', 'MOON', 'MOOR', 'MORE', 'MOSS', 'MOST', 'MOTH', 'MOVE', 'MUCH', 'MULE', 'MULL', 'MUM', 'MUSE', 'MUSH', 'MUST', 'MUTT', 'MYTH',
-  'NAIL', 'NAME', 'NANO', 'NARK', 'NAVY', 'NEAR', 'NEAT', 'NECK', 'NEED', 'NEST', 'NEWS', 'NEXT', 'NICE', 'NINE', 'NODE', 'NONE', 'NOON', 'NORM', 'NOSE', 'NOTE', 'NOUN', 'NUDE', 'NULL', 'NUMB',
-  'OATH', 'OATS', 'OBEY', 'ODDS', 'ODOR', 'OFEN', 'OILS', 'OKAY', 'ONCE', 'ONLY', 'ONTO', 'OPEN', 'OPAL', 'ORAL', 'ORBS', 'OVAL', 'OVEN', 'OVER', 'OWED', 'OWLS', 'OWNED',
-  'PACE', 'PACK', 'PAGE', 'PAID', 'PAIL', 'PAIN', 'PAIR', 'PALE', 'PALM', 'PANE', 'PANG', 'PANT', 'PARK', 'PART', 'PASS', 'PAST', 'PATH', 'PAVE', 'PAWN', 'PEAK', 'PEAL', 'PEAR', 'PEAT', 'PECK', 'PEEL', 'PEER', 'PELT', 'PEMP', 'PEND', 'PENN', 'PENT', 'PERK', 'PEST', 'PETS', 'PICK', 'PIER', 'PILE', 'PILL', 'PINE', 'PING', 'PINK', 'PINT', 'PIPE', 'PITH', 'PITS', 'PLAN', 'PLAY', 'PLEA', 'PLOT', 'PLUG', 'PLUM', 'PLUS', 'POEM', 'POET', 'POLE', 'POLL', 'POND', 'PONY', 'POOL', 'POOR', 'POOP', 'POPS', 'PORE', 'PORK', 'PORT', 'POSE', 'POST', 'POUR', 'PRAY', 'PREP', 'PREY', 'PROD', 'PROP', 'PULL', 'PUMP', 'PUNK', 'PUPP', 'PURE', 'PUSH', 'PUTS',
-  'QUAY', 'QUID', 'QUIN', 'QUIT', 'QUIZ',
+  'NAIL', 'NAME', 'NANO', 'NAVY', 'NEAR', 'NEAT', 'NECK', 'NEED', 'NEST', 'NEWS', 'NEXT', 'NICE', 'NINE', 'NODE', 'NONE', 'NOON', 'NORM', 'NOSE', 'NOTE', 'NOUN', 'NUDE', 'NULL', 'NUMB',
+  'OATH', 'OATS', 'OBEY', 'ODDS', 'ODOR', 'OILS', 'OKAY', 'ONCE', 'ONLY', 'ONTO', 'OPEN', 'OPAL', 'ORAL', 'ORBS', 'OVAL', 'OVEN', 'OVER', 'OWED', 'OWLS', 'OWNED',
+  'PACE', 'PACK', 'PAGE', 'PAID', 'PAIL', 'PAIN', 'PAIR', 'PALE', 'PALM', 'PANE', 'PANG', 'PANT', 'PARK', 'PART', 'PASS', 'PAST', 'PATH', 'PAVE', 'PAWN', 'PEAK', 'PEAL', 'PEAR', 'PEAT', 'PECK', 'PEEL', 'PEER', 'PELT', 'PEND', 'PENN', 'PENT', 'PERK', 'PEST', 'PETS', 'PICK', 'PIER', 'PILE', 'PILL', 'PINE', 'PING', 'PINK', 'PINT', 'PIPE', 'PITH', 'PITS', 'PLAN', 'PLAY', 'PLEA', 'PLOT', 'PLUG', 'PLUM', 'PLUS', 'POEM', 'POET', 'POLE', 'POLL', 'POND', 'PONY', 'POOL', 'POOR', 'POOP', 'POPS', 'PORE', 'PORK', 'PORT', 'POSE', 'POST', 'POUR', 'PRAY', 'PREP', 'PREY', 'PROD', 'PROP', 'PULL', 'PUMP', 'PUNK', 'PURE', 'PUSH', 'PUTS',
+  'QUAY', 'QUID', 'QUIT', 'QUIZ',
   'RACE', 'RACK', 'RAFT', 'RAGE', 'RAID', 'RAIL', 'RAIN', 'RAKE', 'RAMP', 'RANG', 'RANK', 'RANT', 'RAPE', 'RAPT', 'RARE', 'RASH', 'RATE', 'RATH', 'RAVE', 'READ', 'REAL', 'REAM', 'REAP', 'REAR', 'REED', 'REEF', 'REEK', 'REEL', 'RENT', 'REST', 'RICE', 'RICH', 'RICK', 'RIDE', 'RIFE', 'RIFT', 'RING', 'RIPE', 'RISE', 'RISK', 'RITE', 'ROAD', 'ROAM', 'ROAR', 'ROBE', 'ROCK', 'RODE', 'ROLE', 'ROLL', 'ROOF', 'ROOM', 'ROOT', 'ROPE', 'ROSE', 'ROUT', 'ROWE', 'RUBE', 'RUIN', 'RULE', 'RUNG', 'RUSH', 'RUST',
-  'SACK', 'SAFE', 'SAGE', 'SAID', 'SAIL', 'SAKE', 'SALE', 'SALT', 'SAME', 'SAND', 'SANE', 'SANG', 'SANK', 'SASH', 'SAVE', 'SEAL', 'SEAM', 'SEAR', 'SEAT', 'SEED', 'SEEK', 'SEEM', 'SEEN', 'SELF', 'SELL', 'SEND', 'SENT', 'SERF', 'SEWN', 'SHAD', 'SHAG', 'SHAH', 'SHAM', 'SHED', 'SHEN', 'SHES', 'SHIM', 'SHIN', 'SHIP', 'SHOE', 'SHOP', 'SHOT', 'SHOW', 'SHUN', 'SHUT', 'SICK', 'SIDE', 'SIFT', 'SIGH', 'SILK', 'SILL', 'SILO', 'SILT', 'SINE', 'SING', 'SINK', 'SIRE', 'SITE', 'SITS', 'SIT', 'SIZE', 'SKID', 'SKIN', 'SKIP', 'SKIT', 'SLAB', 'SLAM', 'SLAP', 'SLAT', 'SLAY', 'SLED', 'SLEW', 'SLID', 'SLIM', 'SLIP', 'SLIT', 'SLOT', 'SLOW', 'SLUG', 'SLUM', 'SLUR', 'SMOG', 'SMUG', 'SNAP', 'SNOW', 'SOAK', 'SOAP', 'SOAR', 'SOCK', 'SODA', 'SOFA', 'SOFT', 'SOIL', 'SOLD', 'SOLE', 'SOLO', 'SOME', 'SONG', 'SOON', 'SORE', 'SORT', 'SOUL', 'SOUP', 'SOUR', 'SPAM', 'SPAN', 'SPAR', 'SPAS', 'SPAT', 'SPEC', 'SPED', 'SPIN', 'SPIT', 'SPOT', 'SPUN', 'SPUR', 'STAB', 'STAG', 'STAR', 'STAT', 'STAY', 'STEM', 'STEP', 'STEW', 'STIR', 'STOP', 'STOW', 'STUB', 'STUD', 'STUN', 'SUCH', 'SUCK', 'SUIT', 'SULL', 'SUMS', 'SUNG', 'SUNK', 'SURE', 'SURF', 'SWAN', 'SWAP', 'SWAT', 'SWAY', 'SWIM', 'SWUM',
-  'TACK', 'TACT', 'TAIL', 'TAKE', 'TALE', 'TALK', 'TALL', 'TAME', 'TANG', 'TANK', 'TAPE', 'TAPS', 'TASK', 'TATE', 'TAUT', 'TEAL', 'TEAM', 'TEAR', 'TECH', 'TEEN', 'TELL', 'TEND', 'TENS', 'TENT', 'TERM', 'TEST', 'TEXT', 'THAN', 'THAT', 'THEE', 'THEM', 'THEN', 'THEY', 'THIN', 'THIS', 'THOU', 'THRU', 'THUD', 'THUG', 'TICK', 'TIDE', 'TIDY', 'TIED', 'TIER', 'TILE', 'TILL', 'TILT', 'TIME', 'TINE', 'TING', 'TINY', 'TIPS', 'TIRE', 'TOAD', 'TOIL', 'TOLD', 'TOLL', 'TONE', 'TONG', 'TOOK', 'TOOL', 'TOOT', 'TORE', 'TORN', 'TOSS', 'TOUR', 'TOWN', 'TRAP', 'TRAY', 'TREE', 'TREK', 'TRIM', 'TRIO', 'TRIP', 'TROD', 'TRUE', 'TUBE', 'TUCK', 'TUFT', 'TUNA', 'TUNE', 'TURF', 'TURN', 'TUSH', 'TUTU', 'TWIN', 'TYPE', 'TYPO',
-  'UGLY', 'UNDO', 'UNIT', 'UPON', 'URGE', 'USED', 'USER', 'USUP',
+  'SACK', 'SAFE', 'SAGE', 'SAID', 'SAIL', 'SAKE', 'SALE', 'SALT', 'SAME', 'SAND', 'SANE', 'SANG', 'SANK', 'SASH', 'SAVE', 'SEAL', 'SEAM', 'SEAR', 'SEAT', 'SEED', 'SEEK', 'SEEM', 'SEEN', 'SELF', 'SELL', 'SEND', 'SENT', 'SERF', 'SEWN', 'SHAD', 'SHAG', 'SHAH', 'SHAM', 'SHED', 'SHEN', 'SHES', 'SHIM', 'SHIN', 'SHIP', 'SHOE', 'SHOP', 'SHOT', 'SHOW', 'SHUN', 'SHUT', 'SICK', 'SIDE', 'SIFT', 'SIGH', 'SILK', 'SILL', 'SILO', 'SILT', 'SINE', 'SING', 'SINK', 'SIRE', 'SITE', 'SITS', 'SIT', 'SIZE', 'SKID', 'SKIN', 'SKIP', 'SKIT', 'SLAB', 'SLAM', 'SLAP', 'SLAT', 'SLAY', 'SLED', 'SLEW', 'SLID', 'SLIM', 'SLIP', 'SLIT', 'SLOT', 'SLOW', 'SLUG', 'SLUM', 'SLUR', 'SMOG', 'SMUG', 'SNAP', 'SNOW', 'SOAK', 'SOAP', 'SOAR', 'SOCK', 'SODA', 'SOFA', 'SOFT', 'SOIL', 'SOLD', 'SOLE', 'SOLO', 'SOME', 'SONG', 'SOON', 'SORE', 'SORT', 'SOUL', 'SOUP', 'SOUR', 'SPAM', 'SPAN', 'SPAR', 'SPAS', 'SPAT', 'SPEC', 'SPED', 'SPIN', 'SPIT', 'SPOT', 'SPUN', 'SPUR', 'STAB', 'STAG', 'STAR', 'STAT', 'STAY', 'STEM', 'STEP', 'STEW', 'STIR', 'STOP', 'STOW', 'STUB', 'STUD', 'STUN', 'SUCH', 'SUCK', 'SUIT', 'SUMS', 'SUNG', 'SUNK', 'SURE', 'SURF', 'SWAN', 'SWAP', 'SWAT', 'SWAY', 'SWIM', 'SWUM',
+  'TACK', 'TACT', 'TAIL', 'TAKE', 'TALE', 'TALK', 'TALL', 'TAME', 'TANG', 'TANK', 'TAPE', 'TAPS', 'TASK', 'TAUT', 'TEAL', 'TEAM', 'TEAR', 'TECH', 'TEEN', 'TELL', 'TEND', 'TENS', 'TENT', 'TERM', 'TEST', 'TEXT', 'THAN', 'THAT', 'THEE', 'THEM', 'THEN', 'THEY', 'THIN', 'THIS', 'THOU', 'THRU', 'THUD', 'THUG', 'TICK', 'TIDE', 'TIDY', 'TIED', 'TIER', 'TILE', 'TILL', 'TILT', 'TIME', 'TINE', 'TING', 'TINY', 'TIPS', 'TIRE', 'TOAD', 'TOIL', 'TOLD', 'TOLL', 'TONE', 'TONG', 'TOOK', 'TOOL', 'TOOT', 'TORE', 'TORN', 'TOSS', 'TOUR', 'TOWN', 'TRAP', 'TRAY', 'TREE', 'TREK', 'TRIM', 'TRIO', 'TRIP', 'TROD', 'TRUE', 'TUBE', 'TUCK', 'TUFT', 'TUNA', 'TUNE', 'TURF', 'TURN', 'TUSH', 'TUTU', 'TWIN', 'TYPE', 'TYPO',
+  'UGLY', 'UNDO', 'UNIT', 'UPON', 'URGE', 'USED', 'USER',
   'VAIL', 'VAIN', 'VALE', 'VAMP', 'VANE', 'VARY', 'VASE', 'VAST', 'VEAL', 'VEER', 'VEIL', 'VEIN', 'VEND', 'VENT', 'VERB', 'VERY', 'VEST', 'VETO', 'VICE', 'VIEW', 'VINE', 'VIOL', 'VISA', 'VISE', 'VOID', 'VOLT', 'VOTE',
   'WADE', 'WAFT', 'WAGE', 'WAIL', 'WAIT', 'WAKE', 'WALK', 'WALL', 'WAND', 'WANE', 'WANT', 'WARD', 'WARM', 'WARN', 'WARP', 'WASH', 'WASP', 'WAVE', 'WAVY', 'WAXY', 'WAYS', 'WEAK', 'WEAL', 'WEAN', 'WEAR', 'WEED', 'WEEK', 'WEEP', 'WELD', 'WELL', 'WELT', 'WEND', 'WENT', 'WEPT', 'WERE', 'WEST', 'WHAT', 'WHEE', 'WHEN', 'WHET', 'WHOM', 'WIDE', 'WIFE', 'WILD', 'WILL', 'WILT', 'WIND', 'WINE', 'WING', 'WINK', 'WIPE', 'WIRE', 'WISE', 'WISH', 'WITH', 'WITS', 'WOKE', 'WOLF', 'WOMB', 'WOOD', 'WOOL', 'WORD', 'WORE', 'WORK', 'WORM', 'WORN', 'WOVE', 'WRAP', 'WREN', 'WRIT',
   'YANK', 'YARD', 'YARN', 'YAWN', 'YEAH', 'YEAR', 'YELL', 'YELP', 'YOGA', 'YOKE', 'YOLK', 'YOUR', 'YOUTH',
-  'ZEAL', 'ZERO', 'ZEST', 'ZINC', 'ZONE', 'ZOOM'
+  'ZEAL', 'ZERO', 'ZEST', 'ZINC', 'ZONE', 'ZOOM',
+  'ALIEN', 'ROUTE', 'PIE', 'ROUTE', 'PEE', 'PEET', 'ALIEN', 'TOON', 'ROUT', 'TOUT', 'ROTI'
 ]);
 
 const screens = {
@@ -249,7 +251,7 @@ if (hostActionBtn) {
       socket.emit('release-host');
     } else {
       const pinModal = document.getElementById('pin-modal');
-      if (pinModal) pinModal.classList.remove('hidden');
+      if (pinModal) pinModal.classList.add('hidden');
     }
   };
 }
@@ -496,8 +498,8 @@ function hasAllLetters(word, board) {
   return true;
 }
 
-function isDictionaryWord(word) {
-  return COMMON_DICTIONARY.has(word.toUpperCase()) || word.length >= 2;
+function isStrictDictionaryWord(word) {
+  return VALID_DICTIONARY.has(word.toUpperCase());
 }
 
 function updateScorePreview() {
@@ -506,7 +508,7 @@ function updateScorePreview() {
   const existing = mySubmittedWords.find(item => item.word === val);
   const isTouching = existing ? existing.isTouching : isValidWordPath(val, board, gridRows);
   const hasLetters = existing ? existing.hasLetters : hasAllLetters(val, board);
-  const isDict = isDictionaryWord(val);
+  const isDict = isStrictDictionaryWord(val);
   const isValid = isDict && (isTouching || (allowNonTouching && hasLetters));
   const pts = isValid ? getWordScore(val.length, isTouching) : 0;
   const scorePreview = document.getElementById('score-preview');
@@ -654,7 +656,7 @@ function renderMyGuessesTable() {
     const tr = document.createElement('tr');
     let trulyTouching = isValidWordPath(item.word, board, gridRows);
     let hasLetters = hasAllLetters(item.word, board);
-    let isDict = isDictionaryWord(item.word);
+    let isDict = isStrictDictionaryWord(item.word);
     let isValid = isDict && (trulyTouching || (allowNonTouching && hasLetters));
     let pts = isValid ? getWordScore(item.word.length, trulyTouching) : 0;
     tr.innerHTML = `
@@ -716,7 +718,7 @@ async function endGame() {
     let trulyTouching = isValidWordPath(item.word, board, gridRows);
     let hasLetters = hasAllLetters(item.word, board);
     let isPathValid = trulyTouching || (allowNonTouching && hasLetters);
-    let isDictValid = isDictionaryWord(item.word);
+    let isDictValid = isStrictDictionaryWord(item.word);
 
     let pts = 0;
     let wordPen = 0;
@@ -852,12 +854,12 @@ function renderLeaderboardView() {
 function renderWordBreakdownView() {
   const container = document.getElementById('results-container');
   const legend = document.getElementById('results-legend');
-  if (legend) legend.classList.remove('hidden');
+  if (legend) legend.classList.add('hidden');
   if (!container) return;
   container.innerHTML = '';
 
   let sorted = [...finalLeaderboardData].sort((a, b) => b.finalScore - a.finalScore);
-  
+
   const wordCounts = {};
   sorted.forEach(p => {
     p.submittedWords.forEach(w => {
@@ -867,19 +869,66 @@ function renderWordBreakdownView() {
 
   sorted.forEach(p => {
     const block = document.createElement('div');
-    block.style.cssText = "background:#082f49; padding:12px; border-radius:8px; margin-bottom:8px; font-size:0.9rem; border: 1px solid #0369a1;";
+    block.style.cssText = "background:#082f49; padding:14px; border-radius:10px; margin-bottom:12px; font-size:0.9rem; border: 1px solid #0369a1;";
     
-    let sortedWords = [...p.submittedWords].sort((a, b) => a.word.localeCompare(b.word));
-    let wordsHtml = sortedWords.map(w => {
-      const isDup = wordCounts[w.word] > 1;
-      const isNonTouching = !w.isTouching && w.isValid;
-      const borderCol = (isNonTouching || !w.isValid) ? 'var(--danger)' : '#0369a1';
-      const dupClass = isDup ? 'duplicate-highlight' : '';
-      return `<span onclick="showDefinition('${w.word}')" class="${dupClass}" style="display:inline-block; background:#0c4a6e; border:2px solid ${borderCol}; padding:3px 6px; border-radius:4px; margin:2px; cursor:pointer;">${w.word} (${w.pts})${w.penalty > 0 ? ` <span style="color:var(--danger);">-${w.penalty}p</span>` : ''}</span>`;
-    }).join(' ');
+    let touchingScoring = [];
+    let nonTouchingScoring = [];
+    let touchingNonScoring = [];
+    let nonTouchingNonScoring = [];
 
-    let penText = p.penaltyDeduction > 0 ? ` (Penalties: -${p.penaltyDeduction})` : '';
-    block.innerHTML = `<div style="font-weight:bold; color:var(--accent); margin-bottom:6px; font-size:1.05rem;">${p.name}: ${p.finalScore} pts${penText}</div><div style="display:flex; flex-wrap:wrap; gap:4px;">${wordsHtml || '<span style="color:var(--text-muted)">None</span>'}</div>`;
+    p.submittedWords.forEach(w => {
+      const isDup = wordCounts[w.word] > 1;
+      let isActualValid = w.isValid;
+      let pts = w.pts;
+
+      let badgeStyle = "display:inline-block; background:#0c4a6e; border:1px solid #0369a1; padding:4px 8px; border-radius:6px; margin:3px; cursor:pointer;";
+      if (isDup) {
+        badgeStyle = "display:inline-block; background:rgba(250, 204, 21, 0.2); border:2px solid var(--warning); padding:4px 8px; border-radius:6px; margin:3px; cursor:pointer;";
+      } else if (!w.isTouching && isActualValid) {
+        badgeStyle = "display:inline-block; background:#0c4a6e; border:2px solid var(--danger); padding:4px 8px; border-radius:6px; margin:3px; cursor:pointer;";
+      } else if (!isActualValid) {
+        badgeStyle = "display:inline-block; background:#0c4a6e; border:2px solid var(--danger); padding:4px 8px; border-radius:6px; margin:3px; cursor:pointer;";
+      }
+
+      let penaltyLabel = (w.penalty > 0 && !isActualValid) ? ` <span style="color:var(--danger); font-weight:bold;">-${w.penalty}p</span>` : '';
+      let badgeHtml = `<span onclick="showDefinition('${w.word}')" style="${badgeStyle}">${w.word} (${pts})${penaltyLabel}</span>`;
+
+      if (isActualValid && pts > 0) {
+        if (w.isTouching) {
+          touchingScoring.push(badgeHtml);
+        } else {
+          nonTouchingScoring.push(badgeHtml);
+        }
+      } else {
+        if (w.isTouching) {
+          touchingNonScoring.push(badgeHtml);
+        } else {
+          nonTouchingNonScoring.push(badgeHtml);
+        }
+      }
+    });
+
+    let html = `<div style="font-weight:bold; color:var(--accent); margin-bottom:8px; font-size:1.1rem; display:flex; justify-content:space-between;"><span>${p.name}</span><span>${p.finalScore} pts</span></div>`;
+    
+    // Scoring Section
+    html += `<div style="color:var(--success); font-weight:bold; font-size:0.85rem; margin-top:4px;">Scoring:</div>`;
+    html += `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">Touching Words:</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:4px;">${touchingScoring.join(' ') || '<span style="color:var(--text-muted); font-size:0.8rem;">None</span>'}</div>`;
+    
+    html += `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Non-Touching Words:</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">${nonTouchingScoring.join(' ') || '<span style="color:var(--text-muted); font-size:0.8rem;">None</span>'}</div>`;
+
+    html += `<div style="border-top:1px solid #0369a1; margin:8px 0;"></div>`;
+
+    // Non-Scoring Section
+    html += `<div style="color:var(--danger); font-weight:bold; font-size:0.85rem;">Non-Scoring:</div>`;
+    html += `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">Touching Words:</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:4px;">${touchingNonScoring.join(' ') || '<span style="color:var(--text-muted); font-size:0.8rem;">None</span>'}</div>`;
+
+    html += `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Non-Touching Words:</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px;">${nonTouchingNonScoring.join(' ') || '<span style="color:var(--text-muted); font-size:0.8rem;">None</span>'}</div>`;
+
+    block.innerHTML = html;
     container.appendChild(block);
   });
 }
